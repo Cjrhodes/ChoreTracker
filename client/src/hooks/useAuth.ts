@@ -1,14 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-
+// Mock auth hook - no longer makes API calls
 export function useAuth() {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user"],
-    retry: false,
-  });
+  const mockUser = {
+    id: 'demo-parent',
+    email: 'demo@example.com',
+    firstName: 'Demo',
+    lastName: 'Parent',
+    profileImageUrl: null
+  };
 
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
+    user: mockUser,
+    isLoading: false,
+    isAuthenticated: true,
   };
 }
