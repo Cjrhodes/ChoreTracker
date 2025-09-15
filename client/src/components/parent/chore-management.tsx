@@ -71,8 +71,11 @@ export default function ChoreManagement() {
         choreTemplateId: templateId,
         assignedDate: new Date().toISOString().split('T')[0],
       });
+      return childId; // Return childId so we can use it in onSuccess
     },
-    onSuccess: () => {
+    onSuccess: (childId) => {
+      // Invalidate the child's chores cache so Child dashboard refreshes
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "chores"] });
       toast({
         title: "Chore Assigned! 📋",
         description: "The chore has been assigned successfully.",
