@@ -9,7 +9,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertChildSchema, type Child, type InsertChild } from "@shared/schema";
+import { insertChildSchema, type Child, type InsertChild, type ChoreTemplate, type AssignedChore } from "@shared/schema";
+
+type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 import { useState } from "react";
 
 export default function ChildOverview() {
@@ -17,10 +19,23 @@ export default function ChildOverview() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   
   const { data: children = [], isLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
     enabled: !!user,
+  });
+
+  const { data: choreTemplates = [] } = useQuery<ChoreTemplate[]>({
+    queryKey: ["/api/chore-templates"],
+    enabled: !!user,
+  });
+
+  const { data: selectedChildChores = [] } = useQuery<ChoreWithTemplate[]>({
+    queryKey: ["/api/children", selectedChild?.id, "chores"],
+    enabled: !!selectedChild,
   });
 
   const form = useForm<InsertChild>({
@@ -49,6 +64,32 @@ export default function ChildOverview() {
       toast({
         title: "Error",
         description: "Failed to add child. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const assignChore = useMutation({
+    mutationFn: async ({ templateId, childId }: { templateId: string; childId: string }) => {
+      await apiRequest("POST", "/api/assigned-chores", {
+        childId,
+        choreTemplateId: templateId,
+        assignedDate: new Date().toISOString().split('T')[0],
+      });
+      return childId;
+    },
+    onSuccess: (childId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "chores"] });
+      setIsAssignDialogOpen(false);
+      toast({
+        title: "Chore Assigned! 📋",
+        description: "The chore has been assigned successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to assign chore. Please try again.",
         variant: "destructive",
       });
     },
@@ -200,6 +241,10 @@ export default function ChildOverview() {
                   variant="outline" 
                   size="sm" 
                   className="flex-1"
+                  onClick={() => {
+                    setSelectedChild(child);
+                    setIsDetailsDialogOpen(true);
+                  }}
                   data-testid={`button-view-details-${child.id}`}
                 >
                   View Details
@@ -207,6 +252,10 @@ export default function ChildOverview() {
                 <Button 
                   size="sm" 
                   className="flex-1 bg-primary text-primary-foreground"
+                  onClick={() => {
+                    setSelectedChild(child);
+                    setIsAssignDialogOpen(true);
+                  }}
                   data-testid={`button-assign-chore-${child.id}`}
                 >
                   Assign Chore
@@ -216,6 +265,102 @@ export default function ChildOverview() {
           );
         })
       )}
+
+      {/* Assign Chore Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Chore to {selectedChild?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {choreTemplates.length === 0 ? (
+              <p className="text-muted-foreground">No chore templates available. Create some first!</p>
+            ) : (
+              choreTemplates.map((template) => (
+                <div key={template.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{template.icon}</span>
+                    <div>
+                      <p className="font-medium">{template.name}</p>
+                      <p className="text-sm text-muted-foreground">Worth {template.pointValue} points</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => selectedChild && assignChore.mutate({ templateId: template.id, childId: selectedChild.id })}
+                    disabled={assignChore.isPending}
+                    data-testid={`button-assign-template-${template.id}`}
+                  >
+                    {assignChore.isPending ? "Assigning..." : "Assign"}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedChild?.name}'s Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-card border rounded-lg p-4">
+              <h4 className="font-semibold mb-2">Stats</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Age:</span>
+                  <span>{selectedChild?.age} years old</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Points:</span>
+                  <span className="font-bold text-primary">{selectedChild?.totalPoints} pts</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Active Chores:</span>
+                  <span>{selectedChildChores.filter(c => !c.completedAt).length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Completed This Week:</span>
+                  <span>{selectedChildChores.filter(c => c.completedAt).length}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-card border rounded-lg p-4">
+              <h4 className="font-semibold mb-2">Current Chores</h4>
+              {selectedChildChores.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No chores assigned yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedChildChores.slice(0, 3).map((chore) => (
+                    <div key={chore.id} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        <span>{chore.choreTemplate.icon}</span>
+                        <span>{chore.choreTemplate.name}</span>
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        chore.completedAt 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {chore.completedAt ? 'Done' : 'Pending'}
+                      </span>
+                    </div>
+                  ))}
+                  {selectedChildChores.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{selectedChildChores.length - 3} more chores
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
