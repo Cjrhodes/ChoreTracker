@@ -8,16 +8,16 @@ interface InterfaceToggleProps {
 export default function InterfaceToggle({ activeInterface, onToggle }: InterfaceToggleProps) {
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
-      <div className="max-w-md mx-auto px-4 py-3">
+      <div className="responsive-container py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">
+          <h1 className="text-xl font-bold text-primary md:text-2xl lg:text-3xl" data-testid="text-app-title">
             ChoreChamps
           </h1>
-          <div className="flex bg-muted rounded-full p-1">
+          <div className="flex bg-muted rounded-full p-1 md:p-1.5">
             <Button
               variant="ghost"
               size="sm"
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
                 activeInterface === "child"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -30,7 +30,7 @@ export default function InterfaceToggle({ activeInterface, onToggle }: Interface
             <Button
               variant="ghost"
               size="sm"
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
                 activeInterface === "parent"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"

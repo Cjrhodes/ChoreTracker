@@ -50,20 +50,20 @@ export default function ChoreList() {
 
   if (isLoading) {
     return (
-      <section className="max-w-md mx-auto px-4 py-6">
-        <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-          <span className="text-2xl">📋</span> Today's Quests
+      <section className="w-full">
+        <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2 md:text-2xl lg:text-3xl">
+          <span className="text-2xl md:text-3xl lg:text-4xl">📋</span> Today's Quests
         </h3>
-        <div className="space-y-3">
+        <div className="responsive-grid">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-4 animate-pulse">
+            <div key={i} className="bg-card border border-border mobile-card animate-pulse">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-muted rounded-full"></div>
+                <div className="w-12 h-12 bg-muted rounded-full md:w-14 md:h-14"></div>
                 <div className="flex-1">
-                  <div className="h-4 bg-muted rounded mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded mb-2 md:h-5"></div>
+                  <div className="h-3 bg-muted rounded w-1/2 md:h-4"></div>
                 </div>
-                <div className="h-8 w-16 bg-muted rounded-full"></div>
+                <div className="h-8 w-16 bg-muted rounded-full md:h-10 md:w-20"></div>
               </div>
             </div>
           ))}
@@ -79,16 +79,16 @@ export default function ChoreList() {
   });
 
   return (
-    <section className="max-w-md mx-auto px-4 py-6">
-      <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-        <span className="text-2xl">📋</span> Today's Quests
+    <section className="w-full">
+      <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2 md:text-2xl lg:text-3xl">
+        <span className="text-2xl md:text-3xl lg:text-4xl">📋</span> Today's Quests
       </h3>
       
-      <div className="space-y-3">
+      <div className="responsive-grid">
         {todayChores.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-4">🎉</div>
-            <p className="text-muted-foreground">No chores for today! Great job!</p>
+          <div className="text-center py-8 md:py-12 col-span-full">
+            <div className="text-4xl mb-4 md:text-5xl">🎉</div>
+            <p className="text-muted-foreground md:text-lg">No chores for today! Great job!</p>
           </div>
         ) : (
           todayChores.map((chore) => {
@@ -98,7 +98,7 @@ export default function ChoreList() {
             return (
               <div
                 key={chore.id}
-                className={`chore-card rounded-2xl p-4 relative transition-all ${
+                className={`chore-card mobile-card relative transition-all ${
                   isApproved
                     ? "bg-green-50 border-2 border-green-200"
                     : isCompleted
