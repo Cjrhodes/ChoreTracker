@@ -40,7 +40,7 @@ export default function ChildHeader() {
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl">
             😊
           </div>
-          <h2 className="text-2xl font-bold mb-2" data-testid="text-child-name">
+          <h2 className="text-2xl font-bold mb-2 scroll-margin-header" data-testid="text-child-name">
             Hey {child.name}! 👋
           </h2>
           <p className="text-white/90">Ready to earn some points today?</p>

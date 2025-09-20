@@ -30,11 +30,13 @@ export default function Home() {
         onToggle={setActiveInterface}
       />
       
-      {activeInterface === "child" ? (
-        <ChildDashboard />
-      ) : (
-        <ParentDashboard />
-      )}
+      <main className="sticky-header-space">
+        {activeInterface === "child" ? (
+          <ChildDashboard />
+        ) : (
+          <ParentDashboard />
+        )}
+      </main>
     </div>
   );
 }

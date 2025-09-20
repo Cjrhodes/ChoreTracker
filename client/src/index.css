@@ -194,3 +194,18 @@
 .desktop-sidebar {
   @apply lg:col-span-1;
 }
+
+/* Sticky header spacing fix */
+.header-spacing {
+  @apply pt-4 md:pt-6;
+}
+
+/* Prevent content from hiding behind sticky header */
+.scroll-margin-header {
+  scroll-margin-top: 70px;
+}
+
+/* Add proper spacing for sticky header */
+.sticky-header-space {
+  padding-top: 70px;
+}

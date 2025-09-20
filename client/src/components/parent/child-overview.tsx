@@ -124,7 +124,7 @@ export default function ChildOverview() {
   return (
     <section className="w-full">
       <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h3 className="text-lg font-semibold text-foreground md:text-xl lg:text-2xl">Children Overview</h3>
+        <h3 className="text-lg font-semibold text-foreground md:text-xl lg:text-2xl scroll-margin-header">Children Overview</h3>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button 
@@ -237,7 +237,7 @@ export default function ChildOverview() {
                 ></div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-4">
                 <Button 
                   variant="outline" 
                   size="sm" 
