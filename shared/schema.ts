@@ -77,6 +77,7 @@ export const rewards = pgTable("rewards", {
   description: text("description"),
   pointsCost: integer("points_cost").notNull(),
   imageUrl: varchar("image_url"),
+  itemUrl: varchar("item_url"), // URL to Amazon item or any external product link
   category: varchar("category").notNull().default("item"), // item, cash, experience
   createdAt: timestamp("created_at").defaultNow(),
 });
