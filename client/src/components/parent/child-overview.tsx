@@ -237,29 +237,27 @@ export default function ChildOverview() {
                 ></div>
               </div>
               
-              <div className="flex gap-2 mt-4">
+              <div className="grid grid-cols-2 gap-3 mt-4">
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className="flex-1"
+                  className="w-full text-[10px] px-1 py-1 h-8 min-w-0 overflow-hidden"
                   onClick={() => {
                     setSelectedChild(child);
                     setIsDetailsDialogOpen(true);
                   }}
                   data-testid={`button-view-details-${child.id}`}
                 >
-                  View Details
+                  <span className="truncate">Details</span>
                 </Button>
                 <Button 
-                  size="sm" 
-                  className="flex-1 bg-primary text-primary-foreground"
+                  className="w-full bg-primary text-primary-foreground text-[10px] px-1 py-1 h-8 min-w-0 overflow-hidden"
                   onClick={() => {
                     setSelectedChild(child);
                     setIsAssignDialogOpen(true);
                   }}
                   data-testid={`button-assign-chore-${child.id}`}
                 >
-                  Assign Chore
+                  <span className="truncate">Assign</span>
                 </Button>
               </div>
             </div>
