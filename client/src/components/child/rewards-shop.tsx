@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ExternalLink } from "lucide-react";
 import type { Child, Reward, GoalSelection } from "@shared/schema";
 
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -123,12 +124,27 @@ export default function RewardsShop() {
                     {reward.category === "cash" ? "💰" : reward.imageUrl ? "🎁" : "🎯"}
                   </div>
                   <div className="flex-1">
-                    <h4
-                      className={`font-bold ${isCurrentGoal ? "text-white" : "text-foreground"}`}
-                      data-testid={`text-reward-name-${reward.id}`}
-                    >
-                      {reward.name}
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <h4
+                        className={`font-bold ${isCurrentGoal ? "text-white" : "text-foreground"}`}
+                        data-testid={`text-reward-name-${reward.id}`}
+                      >
+                        {reward.name}
+                      </h4>
+                      {reward.itemUrl && (
+                        <a
+                          href={reward.itemUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`${
+                            isCurrentGoal ? "text-white/90 hover:text-white" : "text-blue-500 hover:text-blue-700"
+                          } transition-colors`}
+                          data-testid={`link-reward-url-${reward.id}`}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
                     <p
                       className={`text-sm ${
                         isCurrentGoal ? "text-white/90" : "text-muted-foreground"
@@ -137,6 +153,16 @@ export default function RewardsShop() {
                     >
                       {reward.pointsCost} points {canAfford ? "✅" : "needed"}
                     </p>
+                    {reward.description && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          isCurrentGoal ? "text-white/80" : "text-muted-foreground"
+                        }`}
+                        data-testid={`text-reward-description-${reward.id}`}
+                      >
+                        {reward.description}
+                      </p>
+                    )}
                     {isCurrentGoal && (
                       <div className="bg-white/20 rounded-full p-1 mt-2">
                         <div className="bg-white/40 rounded-full h-2">
