@@ -314,7 +314,7 @@ export default function RewardManagement() {
                     <h4 className="font-semibold text-foreground" data-testid={`text-reward-name-${reward.id}`}>
                       {reward.name}
                     </h4>
-                    {reward.itemUrl && (
+                    {reward.itemUrl && /^https?:\/\/.+/i.test(reward.itemUrl) && (
                       <a
                         href={reward.itemUrl}
                         target="_blank"

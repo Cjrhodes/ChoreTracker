@@ -131,7 +131,7 @@ export default function RewardsShop() {
                       >
                         {reward.name}
                       </h4>
-                      {reward.itemUrl && (
+                      {reward.itemUrl && /^https?:\/\/.+/i.test(reward.itemUrl) && (
                         <a
                           href={reward.itemUrl}
                           target="_blank"

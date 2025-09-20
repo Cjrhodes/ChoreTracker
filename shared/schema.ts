@@ -183,6 +183,11 @@ export const insertAssignedChoreSchema = createInsertSchema(assignedChores).omit
 export const insertRewardSchema = createInsertSchema(rewards).omit({
   id: true,
   createdAt: true,
+}).extend({
+  itemUrl: z.string().trim().optional().refine(
+    (url) => !url || /^https?:\/\/.+/i.test(url),
+    "Only HTTP/HTTPS URLs are allowed"
+  ).or(z.literal("")),
 });
 
 export const insertEarnedBadgeSchema = createInsertSchema(earnedBadges).omit({
