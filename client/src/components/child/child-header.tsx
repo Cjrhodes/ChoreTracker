@@ -16,7 +16,7 @@ export default function ChildHeader() {
   if (!child) {
     return (
       <section className="gradient-bg text-white">
-        <div className="max-w-md mx-auto px-4 py-8">
+        <div className="responsive-container responsive-section">
           <div className="text-center">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl">
               😊
@@ -35,7 +35,7 @@ export default function ChildHeader() {
 
   return (
     <section className="gradient-bg text-white">
-      <div className="max-w-md mx-auto px-4 py-8">
+      <div className="responsive-container responsive-section">
         <div className="text-center mb-6">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl">
             😊

@@ -18,7 +18,7 @@ export default function ParentHeader() {
 
   return (
     <section className="bg-card border-b border-border">
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="responsive-container responsive-section">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-foreground" data-testid="text-dashboard-title">
