@@ -6,12 +6,18 @@ import RecentActivity from "@/components/parent/recent-activity";
 
 export default function ParentDashboard() {
   return (
-    <div className="block">
+    <div className="responsive-container responsive-section">
       <ParentHeader />
-      <ChildOverview />
-      <ChoreManagement />
-      <RewardManagement />
-      <RecentActivity />
+      <div className="desktop-dashboard">
+        <div className="desktop-main-content space-y-8">
+          <ChildOverview />
+          <ChoreManagement />
+          <RewardManagement />
+        </div>
+        <div className="desktop-sidebar">
+          <RecentActivity />
+        </div>
+      </div>
     </div>
   );
 }

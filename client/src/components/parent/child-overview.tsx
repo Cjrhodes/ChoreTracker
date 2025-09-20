@@ -101,13 +101,13 @@ export default function ChildOverview() {
 
   if (isLoading) {
     return (
-      <section className="max-w-md mx-auto px-4 py-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Children Overview</h3>
-        <div className="space-y-4">
+      <section className="w-full">
+        <h3 className="text-lg font-semibold text-foreground mb-4 md:text-xl lg:text-2xl">Children Overview</h3>
+        <div className="responsive-grid">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-4 animate-pulse">
+            <div key={i} className="bg-card border border-border mobile-card animate-pulse">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-muted rounded-full"></div>
+                <div className="w-10 h-10 bg-muted rounded-full md:w-12 md:h-12"></div>
                 <div className="flex-1">
                   <div className="h-4 bg-muted rounded mb-2"></div>
                   <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -122,9 +122,9 @@ export default function ChildOverview() {
   }
 
   return (
-    <section className="max-w-md mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Children Overview</h3>
+    <section className="w-full">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <h3 className="text-lg font-semibold text-foreground md:text-xl lg:text-2xl">Children Overview</h3>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button 
@@ -193,21 +193,22 @@ export default function ChildOverview() {
       </div>
       
       {children.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="text-4xl mb-4">👶</div>
-          <p className="text-muted-foreground mb-4">No children added yet</p>
-          <p className="text-sm text-muted-foreground">Add your first child to get started!</p>
+        <div className="text-center py-8 md:py-12">
+          <div className="text-4xl mb-4 md:text-5xl">👶</div>
+          <p className="text-muted-foreground mb-4 md:text-lg">No children added yet</p>
+          <p className="text-sm text-muted-foreground md:text-base">Add your first child to get started!</p>
         </div>
       ) : (
-        children.map((child) => {
-          const progressPercent = 60; // Mock calculation
-          
-          return (
-            <div 
-              key={child.id} 
-              className="bg-card border border-border rounded-xl p-4 mb-4"
-              data-testid={`card-child-${child.id}`}
-            >
+        <div className="responsive-grid">
+          {children.map((child) => {
+            const progressPercent = 60; // Mock calculation
+            
+            return (
+              <div 
+                key={child.id} 
+                className="bg-card border border-border mobile-card"
+                data-testid={`card-child-${child.id}`}
+              >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">
                   {child.name.charAt(0).toUpperCase()}
@@ -263,7 +264,8 @@ export default function ChildOverview() {
               </div>
             </div>
           );
-        })
+        })}
+        </div>
       )}
 
       {/* Assign Chore Dialog */}
