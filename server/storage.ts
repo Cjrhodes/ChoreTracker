@@ -40,9 +40,11 @@ export interface IStorage {
 
   // Chore operations
   getChoreTemplatesByParent(parentId: string): Promise<ChoreTemplate[]>;
+  getChoreTemplate(templateId: string): Promise<ChoreTemplate | undefined>;
   createChoreTemplate(template: InsertChoreTemplate): Promise<ChoreTemplate>;
   deleteChoreTemplate(templateId: string): Promise<void>;
   getAssignedChoresByChild(childId: string): Promise<(AssignedChore & { choreTemplate: ChoreTemplate })[]>;
+  getAssignedChore(choreId: string): Promise<AssignedChore | undefined>;
   assignChore(chore: InsertAssignedChore): Promise<AssignedChore>;
   completeChore(choreId: string): Promise<void>;
   approveChore(choreId: string, approverId: string, pointsAwarded: number): Promise<void>;
@@ -50,6 +52,7 @@ export interface IStorage {
 
   // Reward operations
   getRewardsByParent(parentId: string): Promise<Reward[]>;
+  getReward(rewardId: string): Promise<Reward | undefined>;
   createReward(reward: InsertReward): Promise<Reward>;
   deleteReward(rewardId: string): Promise<void>;
 
@@ -148,6 +151,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(choreTemplates).where(eq(choreTemplates.parentId, parentId));
   }
 
+  async getChoreTemplate(templateId: string): Promise<ChoreTemplate | undefined> {
+    const [template] = await db.select().from(choreTemplates).where(eq(choreTemplates.id, templateId));
+    return template;
+  }
+
   async createChoreTemplate(template: InsertChoreTemplate): Promise<ChoreTemplate> {
     const [newTemplate] = await db.insert(choreTemplates).values(template).returning();
     return newTemplate;
@@ -179,6 +187,11 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(choreTemplates, eq(assignedChores.choreTemplateId, choreTemplates.id))
       .where(eq(assignedChores.childId, childId))
       .orderBy(desc(assignedChores.createdAt));
+  }
+
+  async getAssignedChore(choreId: string): Promise<AssignedChore | undefined> {
+    const [chore] = await db.select().from(assignedChores).where(eq(assignedChores.id, choreId));
+    return chore;
   }
 
   async assignChore(chore: InsertAssignedChore): Promise<AssignedChore> {
@@ -216,6 +229,11 @@ export class DatabaseStorage implements IStorage {
   // Reward operations
   async getRewardsByParent(parentId: string): Promise<Reward[]> {
     return await db.select().from(rewards).where(eq(rewards.parentId, parentId));
+  }
+
+  async getReward(rewardId: string): Promise<Reward | undefined> {
+    const [reward] = await db.select().from(rewards).where(eq(rewards.id, rewardId));
+    return reward;
   }
 
   async createReward(reward: InsertReward): Promise<Reward> {

@@ -54,6 +54,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/children/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
+      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      
+      // Verify child belongs to parent
+      const child = await storage.getChild(id);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      if (child.parentId !== parentId) {
+        return res.status(403).json({ message: "Not authorized to delete this child" });
+      }
+      
       await storage.deleteChild(id);
       res.json({ message: "Child deleted successfully" });
     } catch (error) {
@@ -89,6 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/chore-templates/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
+      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      
+      // Verify template belongs to parent
+      const template = await storage.getChoreTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Chore template not found" });
+      }
+      if (template.parentId !== parentId) {
+        return res.status(403).json({ message: "Not authorized to delete this template" });
+      }
+      
       await storage.deleteChoreTemplate(id);
       res.json({ message: "Chore template deleted successfully" });
     } catch (error) {
@@ -148,6 +170,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/assigned-chores/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
+      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      
+      // Verify assigned chore belongs to parent's child
+      const chore = await storage.getAssignedChore(id);
+      if (!chore) {
+        return res.status(404).json({ message: "Assigned chore not found" });
+      }
+      
+      // Get child to verify parent ownership
+      const child = await storage.getChild(chore.childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Not authorized to delete this chore" });
+      }
+      
       await storage.deleteAssignedChore(id);
       res.json({ message: "Assigned chore deleted successfully" });
     } catch (error) {
@@ -183,6 +219,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/rewards/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
+      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      
+      // Verify reward belongs to parent
+      const reward = await storage.getReward(id);
+      if (!reward) {
+        return res.status(404).json({ message: "Reward not found" });
+      }
+      if (reward.parentId !== parentId) {
+        return res.status(403).json({ message: "Not authorized to delete this reward" });
+      }
+      
       await storage.deleteReward(id);
       res.json({ message: "Reward deleted successfully" });
     } catch (error) {

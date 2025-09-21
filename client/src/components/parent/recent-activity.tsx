@@ -176,9 +176,10 @@ export default function RecentActivity() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => deleteAssignedChore.mutate(item.choreId)}
+                          disabled={deleteAssignedChore.isPending}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Remove Chore
+                          {deleteAssignedChore.isPending ? "Removing..." : "Remove Chore"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

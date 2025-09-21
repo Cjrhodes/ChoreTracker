@@ -100,9 +100,12 @@ export default function ChildOverview() {
   const deleteChild = useMutation({
     mutationFn: async (childId: string) => {
       await apiRequest("DELETE", `/api/children/${childId}`);
+      return childId;
     },
-    onSuccess: () => {
+    onSuccess: (childId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats", (user as User)?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "chores"] });
       setIsDetailsDialogOpen(false);
       setSelectedChild(null);
       toast({
@@ -122,9 +125,14 @@ export default function ChildOverview() {
   const deleteAssignedChore = useMutation({
     mutationFn: async (choreId: string) => {
       await apiRequest("DELETE", `/api/assigned-chores/${choreId}`);
+      return { choreId, childId: selectedChild?.id };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/children", selectedChild?.id, "chores"] });
+    onSuccess: (data) => {
+      if (data.childId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/children", data.childId, "chores"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/stats", (user as User)?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
       toast({
         title: "Chore Removed! 🗑️",
         description: "The assigned chore has been removed successfully.",
@@ -372,9 +380,11 @@ export default function ChildOverview() {
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => selectedChild && deleteChild.mutate(selectedChild.id)}
+                      disabled={deleteChild.isPending}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      data-testid="button-delete-child"
                     >
-                      Remove Child
+                      {deleteChild.isPending ? "Removing..." : "Remove Child"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -430,6 +440,7 @@ export default function ChildOverview() {
                               variant="ghost" 
                               size="icon"
                               className="text-destructive hover:text-destructive h-6 w-6"
+                              disabled={deleteAssignedChore.isPending}
                               data-testid={`button-delete-assigned-chore-${chore.id}`}
                             >
                               <Trash2 className="w-3 h-3" />
