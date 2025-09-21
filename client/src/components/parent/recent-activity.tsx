@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Clock, Star } from "lucide-react";
+import { CheckCircle, Clock, Star, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { User } from "@shared/schema";
 
 interface ActivityItem {
@@ -44,6 +45,27 @@ export default function RecentActivity() {
       toast({
         title: "Error",
         description: "Failed to approve chore. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAssignedChore = useMutation({
+    mutationFn: async (choreId: string) => {
+      await apiRequest("DELETE", `/api/assigned-chores/${choreId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stats", (user as User)?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      toast({
+        title: "Chore Removed! 🗑️",
+        description: "The assigned chore has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove chore. Please try again.",
         variant: "destructive",
       });
     },
@@ -119,18 +141,49 @@ export default function RecentActivity() {
                     {formatTimeAgo(item.completedAt)} • +{item.points} points
                   </p>
                 </div>
-                {!isApproved && (
-                  <Button
-                    size="sm"
-                    className="text-primary hover:opacity-70 transition-opacity"
-                    variant="ghost"
-                    onClick={() => approveChore.mutate({ choreId: item.choreId, points: item.points })}
-                    disabled={approveChore.isPending}
-                    data-testid={`button-approve-${index}`}
-                  >
-                    {approveChore.isPending ? "..." : "Approve"}
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {!isApproved && (
+                    <Button
+                      size="sm"
+                      className="text-primary hover:opacity-70 transition-opacity"
+                      variant="ghost"
+                      onClick={() => approveChore.mutate({ choreId: item.choreId, points: item.points })}
+                      disabled={approveChore.isPending}
+                      data-testid={`button-approve-${index}`}
+                    >
+                      {approveChore.isPending ? "..." : "Approve"}
+                    </Button>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        data-testid={`button-delete-chore-${item.choreId}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Assigned Chore?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove "{item.choreName}" from {item.childName}'s assigned chores. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteAssignedChore.mutate(item.choreId)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove Chore
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             );
           })

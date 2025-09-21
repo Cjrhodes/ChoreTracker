@@ -119,6 +119,26 @@ export default function ChildOverview() {
     },
   });
 
+  const deleteAssignedChore = useMutation({
+    mutationFn: async (choreId: string) => {
+      await apiRequest("DELETE", `/api/assigned-chores/${choreId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", selectedChild?.id, "chores"] });
+      toast({
+        title: "Chore Removed! 🗑️",
+        description: "The assigned chore has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove chore. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: InsertChild) => {
     createChild.mutate(data);
   };
@@ -396,13 +416,44 @@ export default function ChildOverview() {
                         <span>{chore.choreTemplate.icon}</span>
                         <span>{chore.choreTemplate.name}</span>
                       </span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        chore.completedAt 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {chore.completedAt ? 'Done' : 'Pending'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          chore.completedAt 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {chore.completedAt ? 'Done' : 'Pending'}
+                        </span>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:text-destructive h-6 w-6"
+                              data-testid={`button-delete-assigned-chore-${chore.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Assigned Chore?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently remove "{chore.choreTemplate.name}" from {selectedChild?.name}'s assigned chores. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteAssignedChore.mutate(chore.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remove Chore
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   ))}
                   {selectedChildChores.length > 3 && (
