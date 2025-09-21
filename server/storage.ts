@@ -28,6 +28,7 @@ export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  deleteUser(userId: string): Promise<void>;
 
   // Child operations
   getChildrenByParent(parentId: string): Promise<Child[]>;
@@ -35,6 +36,7 @@ export interface IStorage {
   createChild(child: InsertChild): Promise<Child>;
   updateChildPoints(childId: string, points: number): Promise<void>;
   updateChildGoal(childId: string, goalId: string | null): Promise<void>;
+  deleteChild(childId: string): Promise<void>;
 
   // Chore operations
   getChoreTemplatesByParent(parentId: string): Promise<ChoreTemplate[]>;
@@ -47,6 +49,7 @@ export interface IStorage {
   // Reward operations
   getRewardsByParent(parentId: string): Promise<Reward[]>;
   createReward(reward: InsertReward): Promise<Reward>;
+  deleteReward(rewardId: string): Promise<void>;
 
   // Badge operations
   getBadgesByChild(childId: string): Promise<EarnedBadge[]>;
@@ -84,6 +87,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async deleteUser(userId: string): Promise<void> {
+    // Delete all children of this user (which will cascade to their related records)
+    const userChildren = await this.getChildrenByParent(userId);
+    for (const child of userChildren) {
+      await this.deleteChild(child.id);
+    }
+    
+    // Delete user's chore templates and rewards
+    await db.delete(choreTemplates).where(eq(choreTemplates.parentId, userId));
+    await db.delete(rewards).where(eq(rewards.parentId, userId));
+    
+    // Finally delete the user
+    await db.delete(users).where(eq(users.id, userId));
+  }
+
   // Child operations
   async getChildrenByParent(parentId: string): Promise<Child[]> {
     return await db.select().from(children).where(eq(children.parentId, parentId));
@@ -111,6 +129,16 @@ export class DatabaseStorage implements IStorage {
       .update(children)
       .set({ currentGoalId: goalId })
       .where(eq(children.id, childId));
+  }
+
+  async deleteChild(childId: string): Promise<void> {
+    // Delete related records first (to maintain referential integrity)
+    await db.delete(earnedBadges).where(eq(earnedBadges.childId, childId));
+    await db.delete(goalSelections).where(eq(goalSelections.childId, childId));
+    await db.delete(assignedChores).where(eq(assignedChores.childId, childId));
+    
+    // Then delete the child
+    await db.delete(children).where(eq(children.id, childId));
   }
 
   // Chore operations
@@ -179,6 +207,17 @@ export class DatabaseStorage implements IStorage {
   async createReward(reward: InsertReward): Promise<Reward> {
     const [newReward] = await db.insert(rewards).values(reward).returning();
     return newReward;
+  }
+
+  async deleteReward(rewardId: string): Promise<void> {
+    // First deactivate any goals using this reward
+    await db
+      .update(goalSelections)
+      .set({ isActive: false })
+      .where(eq(goalSelections.rewardId, rewardId));
+    
+    // Then delete the reward
+    await db.delete(rewards).where(eq(rewards.id, rewardId));
   }
 
   // Badge operations

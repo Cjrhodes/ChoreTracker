@@ -19,6 +19,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -36,7 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ExternalLink, Gift, DollarSign, Star } from "lucide-react";
+import { Plus, ExternalLink, Gift, DollarSign, Star, Trash2 } from "lucide-react";
 
 export default function RewardManagement() {
   const { user } = useAuth();
@@ -79,6 +90,26 @@ export default function RewardManagement() {
       toast({
         title: "Error",
         description: "Failed to create reward. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteReward = useMutation({
+    mutationFn: async (rewardId: string) => {
+      await apiRequest("DELETE", `/api/rewards/${rewardId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      toast({
+        title: "Reward Deleted! 🗑️",
+        description: "The reward has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete reward. Please try again.",
         variant: "destructive",
       });
     },
@@ -335,6 +366,40 @@ export default function RewardManagement() {
                     </p>
                   )}
                 </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-reward-${reward.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Reward</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{reward.name}"? This action cannot be undone.
+                        Any children currently working toward this reward will have their goals reset.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid={`button-cancel-delete-${reward.id}`}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteReward.mutate(reward.id)}
+                        disabled={deleteReward.isPending}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        data-testid={`button-confirm-delete-${reward.id}`}
+                      >
+                        {deleteReward.isPending ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))}
