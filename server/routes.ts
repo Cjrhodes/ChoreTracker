@@ -86,6 +86,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/chore-templates/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteChoreTemplate(id);
+      res.json({ message: "Chore template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting chore template:", error);
+      res.status(500).json({ message: "Failed to delete chore template" });
+    }
+  });
+
   // Assigned chores routes
   app.get('/api/children/:childId/chores', async (req: any, res) => {
     try {
@@ -131,6 +142,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error approving chore:", error);
       res.status(500).json({ message: "Failed to approve chore" });
+    }
+  });
+
+  app.delete('/api/assigned-chores/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAssignedChore(id);
+      res.json({ message: "Assigned chore deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting assigned chore:", error);
+      res.status(500).json({ message: "Failed to delete assigned chore" });
     }
   });
 

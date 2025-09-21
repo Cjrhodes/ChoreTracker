@@ -41,10 +41,12 @@ export interface IStorage {
   // Chore operations
   getChoreTemplatesByParent(parentId: string): Promise<ChoreTemplate[]>;
   createChoreTemplate(template: InsertChoreTemplate): Promise<ChoreTemplate>;
+  deleteChoreTemplate(templateId: string): Promise<void>;
   getAssignedChoresByChild(childId: string): Promise<(AssignedChore & { choreTemplate: ChoreTemplate })[]>;
   assignChore(chore: InsertAssignedChore): Promise<AssignedChore>;
   completeChore(choreId: string): Promise<void>;
   approveChore(choreId: string, approverId: string, pointsAwarded: number): Promise<void>;
+  deleteAssignedChore(choreId: string): Promise<void>;
 
   // Reward operations
   getRewardsByParent(parentId: string): Promise<Reward[]>;
@@ -151,6 +153,14 @@ export class DatabaseStorage implements IStorage {
     return newTemplate;
   }
 
+  async deleteChoreTemplate(templateId: string): Promise<void> {
+    // First delete all assigned chores using this template
+    await db.delete(assignedChores).where(eq(assignedChores.choreTemplateId, templateId));
+    
+    // Then delete the template
+    await db.delete(choreTemplates).where(eq(choreTemplates.id, templateId));
+  }
+
   async getAssignedChoresByChild(childId: string): Promise<(AssignedChore & { choreTemplate: ChoreTemplate })[]> {
     return await db
       .select({
@@ -197,6 +207,10 @@ export class DatabaseStorage implements IStorage {
     if (chore) {
       await this.updateChildPoints(chore.childId, pointsAwarded);
     }
+  }
+
+  async deleteAssignedChore(choreId: string): Promise<void> {
+    await db.delete(assignedChores).where(eq(assignedChores.id, choreId));
   }
 
   // Reward operations
