@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -10,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, type Child, type InsertChild, type ChoreTemplate, type AssignedChore } from "@shared/schema";
+import { Trash2 } from "lucide-react";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 import { useState } from "react";
@@ -90,6 +92,28 @@ export default function ChildOverview() {
       toast({
         title: "Error",
         description: "Failed to assign chore. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteChild = useMutation({
+    mutationFn: async (childId: string) => {
+      await apiRequest("DELETE", `/api/children/${childId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      setIsDetailsDialogOpen(false);
+      setSelectedChild(null);
+      toast({
+        title: "Child Removed! 👋",
+        description: "The child has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove child. Please try again.",
         variant: "destructive",
       });
     },
@@ -304,7 +328,38 @@ export default function ChildOverview() {
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{selectedChild?.name}'s Details</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{selectedChild?.name}'s Details</DialogTitle>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    data-testid={`button-delete-child-${selectedChild?.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Child?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove "{selectedChild?.name}" and all their data including chores, points, and achievements. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => selectedChild && deleteChild.mutate(selectedChild.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Remove Child
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </DialogHeader>
           <div className="space-y-4">
             <div className="bg-card border rounded-lg p-4">
