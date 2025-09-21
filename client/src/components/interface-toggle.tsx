@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface InterfaceToggleProps {
   activeInterface: "child" | "parent";
@@ -13,33 +14,36 @@ export default function InterfaceToggle({ activeInterface, onToggle }: Interface
           <h1 className="text-xl font-bold text-primary md:text-2xl lg:text-3xl" data-testid="text-app-title">
             ChoreChamps
           </h1>
-          <div className="flex bg-muted rounded-full p-1 md:p-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
-                activeInterface === "child"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => onToggle("child")}
-              data-testid="button-child-mode"
-            >
-              👶 Kid Mode
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
-                activeInterface === "parent"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => onToggle("parent")}
-              data-testid="button-parent-mode"
-            >
-              👨‍👩‍👧‍👦 Parent
-            </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex bg-muted rounded-full p-1 md:p-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
+                  activeInterface === "child"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => onToggle("child")}
+                data-testid="button-child-mode"
+              >
+                👶 Kid Mode
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all md:px-6 md:py-3 md:text-base ${
+                  activeInterface === "parent"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => onToggle("parent")}
+                data-testid="button-parent-mode"
+              >
+                👨‍👩‍👧‍👦 Parent
+              </Button>
+            </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>
