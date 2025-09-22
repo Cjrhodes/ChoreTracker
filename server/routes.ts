@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { isAuthenticated } from "./replitAuth";
 import { 
   insertChildSchema,
   insertChoreTemplateSchema,
@@ -12,9 +13,9 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // Children routes
-  app.get('/api/children', async (req: any, res) => {
+  app.get('/api/children', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const children = await storage.getChildrenByParent(parentId);
       res.json(children);
     } catch (error) {
@@ -39,9 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/children', async (req: any, res) => {
+  app.post('/api/children', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const childData = insertChildSchema.parse({ ...req.body, parentId });
       const child = await storage.createChild(childData);
       res.json(child);
@@ -51,10 +52,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/children/:id', async (req: any, res) => {
+  app.delete('/api/children/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      const parentId = req.user.claims.sub;
       
       // Verify child belongs to parent
       const child = await storage.getChild(id);
@@ -74,9 +75,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chore template routes
-  app.get('/api/chore-templates', async (req: any, res) => {
+  app.get('/api/chore-templates', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const templates = await storage.getChoreTemplatesByParent(parentId);
       res.json(templates);
     } catch (error) {
@@ -85,9 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/chore-templates', async (req: any, res) => {
+  app.post('/api/chore-templates', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const templateData = insertChoreTemplateSchema.parse({ ...req.body, parentId });
       const template = await storage.createChoreTemplate(templateData);
       res.json(template);
@@ -97,10 +98,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/chore-templates/:id', async (req: any, res) => {
+  app.delete('/api/chore-templates/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      const parentId = req.user.claims.sub;
       
       // Verify template belongs to parent
       const template = await storage.getChoreTemplate(id);
@@ -120,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Assigned chores routes
-  app.get('/api/children/:childId/chores', async (req: any, res) => {
+  app.get('/api/children/:childId/chores', isAuthenticated, async (req: any, res) => {
     try {
       const { childId } = req.params;
       const chores = await storage.getAssignedChoresByChild(childId);
@@ -131,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/assigned-chores', async (req: any, res) => {
+  app.post('/api/assigned-chores', isAuthenticated, async (req: any, res) => {
     try {
       const choreData = insertAssignedChoreSchema.parse(req.body);
       const chore = await storage.assignChore(choreData);
@@ -142,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/assigned-chores/:id/complete', async (req: any, res) => {
+  app.patch('/api/assigned-chores/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.completeChore(id);
@@ -153,11 +154,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/assigned-chores/:id/approve', async (req: any, res) => {
+  app.patch('/api/assigned-chores/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { pointsAwarded } = req.body;
-      const approverId = 'demo-parent';
+      const approverId = req.user.claims.sub;
       
       await storage.approveChore(id, approverId, pointsAwarded);
       res.json({ message: "Chore approved and points awarded" });
@@ -167,10 +168,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/assigned-chores/:id', async (req: any, res) => {
+  app.delete('/api/assigned-chores/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      const parentId = req.user.claims.sub;
       
       // Verify assigned chore belongs to parent's child
       const chore = await storage.getAssignedChore(id);
@@ -193,9 +194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rewards routes
-  app.get('/api/rewards', async (req: any, res) => {
+  app.get('/api/rewards', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const rewards = await storage.getRewardsByParent(parentId);
       res.json(rewards);
     } catch (error) {
@@ -204,9 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/rewards', async (req: any, res) => {
+  app.post('/api/rewards', isAuthenticated, async (req: any, res) => {
     try {
-      const parentId = 'demo-parent';
+      const parentId = req.user.claims.sub;
       const rewardData = insertRewardSchema.parse({ ...req.body, parentId });
       const reward = await storage.createReward(rewardData);
       res.json(reward);
@@ -216,10 +217,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/rewards/:id', async (req: any, res) => {
+  app.delete('/api/rewards/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const parentId = 'demo-parent'; // TODO: Get from authenticated user
+      const parentId = req.user.claims.sub;
       
       // Verify reward belongs to parent
       const reward = await storage.getReward(id);
@@ -239,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Goal selection routes
-  app.get('/api/children/:childId/goal', async (req: any, res) => {
+  app.get('/api/children/:childId/goal', isAuthenticated, async (req: any, res) => {
     try {
       const { childId } = req.params;
       const goal = await storage.getActiveGoal(childId);
@@ -250,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/goal-selections', async (req: any, res) => {
+  app.post('/api/goal-selections', isAuthenticated, async (req: any, res) => {
     try {
       const goalData = insertGoalSelectionSchema.parse(req.body);
       const goal = await storage.selectGoal(goalData);
@@ -262,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Badges routes
-  app.get('/api/children/:childId/badges', async (req: any, res) => {
+  app.get('/api/children/:childId/badges', isAuthenticated, async (req: any, res) => {
     try {
       const { childId } = req.params;
       const badges = await storage.getBadgesByChild(childId);
@@ -274,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stats routes
-  app.get('/api/stats/:parentId', async (req: any, res) => {
+  app.get('/api/stats/:parentId', isAuthenticated, async (req: any, res) => {
     try {
       const { parentId } = req.params;
       const activity = await storage.getRecentActivity(parentId);

@@ -1,0 +1,104 @@
+2025-09-21 21:47:41.95
+5f0d759c
+User
+4:47:41 AM [express] GET /api/stats/demo-parent 200 in 48ms :: []
+2025-09-21 21:47:45.70
+5f0d759c
+User
+Error creating child: error: insert or update on table "children" violates foreign key constraint "children_parent_id_users_id_fk"
+2025-09-21 21:47:45.70
+5f0d759c
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-09-21 21:47:45.70
+5f0d759c
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-09-21 21:47:45.70
+5f0d759c
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-09-21 21:47:45.70
+5f0d759c
+User
+at async DatabaseStorage.createChild (file:///home/runner/workspace/dist/index.js:265:24)
+2025-09-21 21:47:45.70
+5f0d759c
+User
+at async file:///home/runner/workspace/dist/index.js:442:21 {
+2025-09-21 21:47:45.70
+5f0d759c
+User
+length: 284,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+severity: 'ERROR',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+code: '23503',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+detail: 'Key (parent_id)=(demo-parent) is not present in table "users".',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+hint: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+position: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+internalPosition: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+internalQuery: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+where: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+schema: 'public',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+table: 'children',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+column: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+dataType: undefined,
+2025-09-21 21:47:45.70
+5f0d759c
+User
+constraint: 'children_parent_id_users_id_fk',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+file: 'ri_triggers.c',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+line: '2608',
+2025-09-21 21:47:45.70
+5f0d759c
+User
+routine: 'ri_ReportViolation'
+2025-09-21 21:47:45.70
+5f0d759c
+User
+}
+2025-09-21 21:47:45.70
+5f0d759c
+User
+4:47:45 AM [express] POST /api/children 500 in 56ms :: {"message":"Failed to create child"}
