@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logoUrl from '@assets/generated_images/ChoreChamps_app_logo_design_6ae48c09.png';
 
 interface InterfaceToggleProps {
   activeInterface: "child" | "parent";
@@ -11,9 +12,12 @@ export default function InterfaceToggle({ activeInterface, onToggle }: Interface
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="responsive-container py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary md:text-2xl lg:text-3xl" data-testid="text-app-title">
-            ChoreChamps
-          </h1>
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt="ChoreChamps Logo" className="h-8 w-8 md:h-10 md:w-10" />
+            <h1 className="text-xl font-bold text-primary md:text-2xl lg:text-3xl" data-testid="text-app-title">
+              ChoreChamps
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex bg-muted rounded-full p-1 md:p-1.5">
               <Button
