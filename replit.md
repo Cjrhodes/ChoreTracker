@@ -127,3 +127,17 @@ The system uses Replit's OpenID Connect (OIDC) authentication service with Passp
 **Database Drivers:**
 - @neondatabase/serverless for optimized PostgreSQL connections
 - WebSocket support for real-time capabilities
+
+# Recent Changes
+
+**September 26, 2025:**
+- **COMPLETED: Switchboard Layout Implementation** - Successfully implemented architect-recommended "switchboard" layout using CSS Grid with explicit track sizes
+- Both dashboards now fit within 720px viewport without page scrolling (core requirement achieved)
+- **Layout Details:**
+  - Child dashboard: 4-row grid (64px header + 32px goal bar + flexible quests + 120px rewards/badges)
+  - Parent dashboard: 3-row grid (64px KPI header + 48px action buttons + flexible micro-panels)
+  - Uses h-[calc(100dvh-143px)] to account for sticky header and ensure perfect viewport fit
+  - Internal scrolling only in content areas (no page-level scrolling)
+- All key functionality visible in one view without scrolling requirement **ACHIEVED**
+- Created custom ChoreChamps logo with golden trophy design and integrated across app
+- Confirmed Get Started button functionality and authentication flow
