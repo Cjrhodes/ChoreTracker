@@ -120,6 +120,25 @@ export default function ParentDashboard() {
     },
   });
 
+  const generateContent = useMutation({
+    mutationFn: async (goalId: string) => {
+      await apiRequest("POST", `/api/learning-goals/${goalId}/generate-content`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/learning/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/learning-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes"] });
+      toast({ title: "Learning adventure ready! 🚀", description: "Educational content has been generated." });
+    },
+    onError: () => {
+      toast({ 
+        title: "Content Generation Failed", 
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    },
+  });
+
   // Calculate summary statistics
   const totalPoints = children.reduce((sum, child) => sum + child.totalPoints, 0);
   const completedToday = recentChores.filter(chore => {
@@ -462,9 +481,19 @@ export default function ParentDashboard() {
                       {goal.difficulty}
                     </span>
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground mb-3">
                     Target: {goal.targetUnits} activities • {goal.pointsPerUnit} pts each
                   </div>
+                  <Button
+                    size="sm"
+                    onClick={() => generateContent.mutate(goal.id)}
+                    disabled={generateContent.isPending}
+                    className="w-full"
+                    data-testid="button-generate-content"
+                  >
+                    <Brain className="w-4 h-4 mr-2" />
+                    {generateContent.isPending ? "Generating..." : "Generate Content"}
+                  </Button>
                 </div>
               ))
             )}

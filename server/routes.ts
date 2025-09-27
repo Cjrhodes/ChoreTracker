@@ -689,26 +689,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate synopsis and learning links
-      const synopsis = await aiContentService.generateSynopsis(goal.subject, child.age, goal.difficulty);
+      const synopsis = await aiContentService.generateSynopsis(goal.subject, child.age, goal.difficulty as 'easy' | 'medium' | 'hard');
       const learningLinks = await aiContentService.generateLearningLinks(goal.subject, child.age);
       
       // Create learning activity
       const activityData = {
         goalId: goal.id,
-        type: 'synopsis',
+        type: 'synopsis' as const,
         title: `${goal.subject} Learning Adventure`,
         content: {
           synopsis,
           resourceLinks: learningLinks,
         },
         resourceLinks: learningLinks,
-        status: 'new',
+        status: 'new' as const,
       };
       
       const activity = await storage.createLearningActivity(activityData);
 
       // Generate quiz
-      const quiz = await aiContentService.generateQuiz(goal.subject, child.age, goal.difficulty);
+      const quiz = await aiContentService.generateQuiz(goal.subject, child.age, goal.difficulty as 'easy' | 'medium' | 'hard');
       const firstQuestion = quiz.questions[0]; // Get the first question from the quiz
       const quizData = {
         learningGoalId: goal.id, // This matches the createQuiz method parameter
@@ -751,8 +751,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check answer (quiz.content has the actual quiz data)
-      const isCorrect = selectedAnswer === quiz.content.correctAnswer;
-      const pointsEarned = isCorrect ? (quiz.content.pointsReward || 10) : 0;
+      const quizContent = quiz.content as any;
+      const isCorrect = selectedAnswer === quizContent.correctAnswer;
+      const pointsEarned = isCorrect ? (quizContent.pointsReward || 10) : 0;
       
       // Create quiz attempt (match schema exactly)
       const attemptData = {

@@ -115,18 +115,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
+    // First check if a user exists with this email
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userData.email!))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      // Update existing user with new data
+      const [user] = await db
+        .update(users)
+        .set({
           ...userData,
           updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+        })
+        .where(eq(users.email, userData.email!))
+        .returning();
+      return user;
+    } else {
+      // Insert new user
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            ...userData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    }
   }
 
   async deleteUser(userId: string): Promise<void> {
@@ -527,7 +548,7 @@ export class DatabaseStorage implements IStorage {
   async createQuiz(quizData: { learningGoalId: string; question: string; options: string[]; correctAnswer: string; pointsReward: number }): Promise<LearningActivity> {
     const quizActivity = {
       goalId: quizData.learningGoalId,
-      type: 'quiz',
+      type: 'quiz' as const,
       title: 'Quiz Activity',
       content: {
         question: quizData.question,
@@ -535,7 +556,7 @@ export class DatabaseStorage implements IStorage {
         correctAnswer: quizData.correctAnswer,
         pointsReward: quizData.pointsReward,
       },
-      status: 'new',
+      status: 'new' as const,
     };
     
     return await this.createActivity(quizActivity);
