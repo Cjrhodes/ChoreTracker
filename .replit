@@ -31,6 +31,10 @@ localPort = 34919
 externalPort = 8008
 
 [[ports]]
+localPort = 35059
+externalPort = 8000
+
+[[ports]]
 localPort = 35263
 externalPort = 6800
 
@@ -66,7 +70,7 @@ externalPort = 3003
 PORT = "5000"
 
 [agent]
-integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0"]
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_anthropic:1.0.0"]
 
 [workflows]
 runButton = "Project"

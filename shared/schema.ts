@@ -98,11 +98,48 @@ export const goalSelections = pgTable("goal_selections", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Learning Goals tables for AI-powered educational content
+export const learningGoals = pgTable("learning_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  parentId: varchar("parent_id").notNull().references(() => users.id),
+  subject: varchar("subject").notNull(),
+  difficulty: varchar("difficulty").notNull(), // 'easy', 'medium', 'hard'
+  targetUnits: integer("target_units").notNull(), // number of activities to complete
+  pointsPerUnit: integer("points_per_unit").notNull().default(10),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const learningActivities = pgTable("learning_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  goalId: varchar("goal_id").notNull().references(() => learningGoals.id),
+  type: varchar("type").notNull(), // 'synopsis', 'quiz', 'game'
+  title: varchar("title").notNull(),
+  content: jsonb("content"), // AI-generated content (synopsis text, quiz data, etc.)
+  resourceLinks: jsonb("resource_links"), // Array of {title, url} for additional learning
+  status: varchar("status").notNull().default("new"), // 'new', 'in_progress', 'completed'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const quizAttempts = pgTable("quiz_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => learningActivities.id),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  answers: jsonb("answers"), // Array of selected answer indices
+  score: integer("score").notNull(),
+  totalQuestions: integer("total_questions").notNull(),
+  passed: boolean("passed").notNull(),
+  pointsAwarded: integer("points_awarded").notNull().default(0),
+  completedAt: timestamp("completed_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   children: many(children),
   choreTemplates: many(choreTemplates),
   rewards: many(rewards),
+  learningGoals: many(learningGoals),
 }));
 
 export const childrenRelations = relations(children, ({ one, many }) => ({
@@ -113,6 +150,8 @@ export const childrenRelations = relations(children, ({ one, many }) => ({
   assignedChores: many(assignedChores),
   earnedBadges: many(earnedBadges),
   goalSelections: many(goalSelections),
+  learningGoals: many(learningGoals),
+  quizAttempts: many(quizAttempts),
 }));
 
 export const choreTemplatesRelations = relations(choreTemplates, ({ one, many }) => ({
@@ -164,6 +203,37 @@ export const goalSelectionsRelations = relations(goalSelections, ({ one }) => ({
   }),
 }));
 
+export const learningGoalsRelations = relations(learningGoals, ({ one, many }) => ({
+  child: one(children, {
+    fields: [learningGoals.childId],
+    references: [children.id],
+  }),
+  parent: one(users, {
+    fields: [learningGoals.parentId],
+    references: [users.id],
+  }),
+  activities: many(learningActivities),
+}));
+
+export const learningActivitiesRelations = relations(learningActivities, ({ one, many }) => ({
+  goal: one(learningGoals, {
+    fields: [learningActivities.goalId],
+    references: [learningGoals.id],
+  }),
+  quizAttempts: many(quizAttempts),
+}));
+
+export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
+  activity: one(learningActivities, {
+    fields: [quizAttempts.activityId],
+    references: [learningActivities.id],
+  }),
+  child: one(children, {
+    fields: [quizAttempts.childId],
+    references: [children.id],
+  }),
+}));
+
 // Insert schemas
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
@@ -200,6 +270,26 @@ export const insertGoalSelectionSchema = createInsertSchema(goalSelections).omit
   createdAt: true,
 });
 
+export const insertLearningGoalSchema = createInsertSchema(learningGoals).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  difficulty: z.enum(['easy', 'medium', 'hard']),
+});
+
+export const insertLearningActivitySchema = createInsertSchema(learningActivities).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  type: z.enum(['synopsis', 'quiz', 'game']),
+  status: z.enum(['new', 'in_progress', 'completed']).optional(),
+});
+
+export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({
+  id: true,
+  completedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -215,3 +305,9 @@ export type EarnedBadge = typeof earnedBadges.$inferSelect;
 export type InsertEarnedBadge = z.infer<typeof insertEarnedBadgeSchema>;
 export type GoalSelection = typeof goalSelections.$inferSelect;
 export type InsertGoalSelection = z.infer<typeof insertGoalSelectionSchema>;
+export type LearningGoal = typeof learningGoals.$inferSelect;
+export type InsertLearningGoal = z.infer<typeof insertLearningGoalSchema>;
+export type LearningActivity = typeof learningActivities.$inferSelect;
+export type InsertLearningActivity = z.infer<typeof insertLearningActivitySchema>;
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;

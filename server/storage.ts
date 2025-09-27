@@ -6,6 +6,9 @@ import {
   rewards,
   earnedBadges,
   goalSelections,
+  learningGoals,
+  learningActivities,
+  quizAttempts,
   type User,
   type UpsertUser,
   type Child,
@@ -20,6 +23,12 @@ import {
   type InsertEarnedBadge,
   type GoalSelection,
   type InsertGoalSelection,
+  type LearningGoal,
+  type InsertLearningGoal,
+  type LearningActivity,
+  type InsertLearningActivity,
+  type QuizAttempt,
+  type InsertQuizAttempt,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -64,6 +73,27 @@ export interface IStorage {
   getActiveGoal(childId: string): Promise<(GoalSelection & { reward: Reward }) | undefined>;
   selectGoal(goal: InsertGoalSelection): Promise<GoalSelection>;
   deactivateCurrentGoal(childId: string): Promise<void>;
+
+  // Learning Goals operations
+  getLearningGoalsByParent(parentId: string): Promise<LearningGoal[]>;
+  getLearningGoalsByChild(childId: string): Promise<LearningGoal[]>;
+  getLearningGoal(goalId: string): Promise<LearningGoal | undefined>;
+  createLearningGoal(goal: InsertLearningGoal): Promise<LearningGoal>;
+  updateLearningGoalStatus(goalId: string, isActive: boolean): Promise<void>;
+  deleteLearningGoal(goalId: string): Promise<void>;
+
+  // Learning Activities operations
+  getActivitiesByGoal(goalId: string): Promise<LearningActivity[]>;
+  getActivity(activityId: string): Promise<LearningActivity | undefined>;
+  createActivity(activity: InsertLearningActivity): Promise<LearningActivity>;
+  updateActivityStatus(activityId: string, status: 'new' | 'in_progress' | 'completed'): Promise<void>;
+  getActiveActivitiesByChild(childId: string): Promise<(LearningActivity & { goal: LearningGoal })[]>;
+
+  // Quiz Attempts operations
+  getAttemptsByActivity(activityId: string): Promise<QuizAttempt[]>;
+  getAttemptsByChild(childId: string): Promise<QuizAttempt[]>;
+  createQuizAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt>;
+  getLatestAttempt(activityId: string, childId: string): Promise<QuizAttempt | undefined>;
 
   // Stats
   getCompletedChoresCount(childId: string, date: Date): Promise<number>;
@@ -342,6 +372,125 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(assignedChores.completedAt))
       .limit(10);
+  }
+
+  // Learning Goals operations
+  async getLearningGoalsByParent(parentId: string): Promise<LearningGoal[]> {
+    return await db.select().from(learningGoals).where(eq(learningGoals.parentId, parentId));
+  }
+
+  async getLearningGoalsByChild(childId: string): Promise<LearningGoal[]> {
+    return await db.select().from(learningGoals).where(eq(learningGoals.childId, childId));
+  }
+
+  async getLearningGoal(goalId: string): Promise<LearningGoal | undefined> {
+    const [goal] = await db.select().from(learningGoals).where(eq(learningGoals.id, goalId));
+    return goal;
+  }
+
+  async createLearningGoal(goal: InsertLearningGoal): Promise<LearningGoal> {
+    const [newGoal] = await db.insert(learningGoals).values(goal).returning();
+    return newGoal;
+  }
+
+  async updateLearningGoalStatus(goalId: string, isActive: boolean): Promise<void> {
+    await db
+      .update(learningGoals)
+      .set({ isActive })
+      .where(eq(learningGoals.id, goalId));
+  }
+
+  async deleteLearningGoal(goalId: string): Promise<void> {
+    // Delete related activities and quiz attempts first
+    const activities = await this.getActivitiesByGoal(goalId);
+    for (const activity of activities) {
+      await db.delete(quizAttempts).where(eq(quizAttempts.activityId, activity.id));
+    }
+    await db.delete(learningActivities).where(eq(learningActivities.goalId, goalId));
+    
+    // Then delete the goal
+    await db.delete(learningGoals).where(eq(learningGoals.id, goalId));
+  }
+
+  // Learning Activities operations
+  async getActivitiesByGoal(goalId: string): Promise<LearningActivity[]> {
+    return await db.select().from(learningActivities).where(eq(learningActivities.goalId, goalId));
+  }
+
+  async getActivity(activityId: string): Promise<LearningActivity | undefined> {
+    const [activity] = await db.select().from(learningActivities).where(eq(learningActivities.id, activityId));
+    return activity;
+  }
+
+  async createActivity(activity: InsertLearningActivity): Promise<LearningActivity> {
+    const [newActivity] = await db.insert(learningActivities).values(activity).returning();
+    return newActivity;
+  }
+
+  async updateActivityStatus(activityId: string, status: 'new' | 'in_progress' | 'completed'): Promise<void> {
+    await db
+      .update(learningActivities)
+      .set({ status })
+      .where(eq(learningActivities.id, activityId));
+  }
+
+  async getActiveActivitiesByChild(childId: string): Promise<(LearningActivity & { goal: LearningGoal })[]> {
+    return await db
+      .select({
+        id: learningActivities.id,
+        goalId: learningActivities.goalId,
+        type: learningActivities.type,
+        title: learningActivities.title,
+        content: learningActivities.content,
+        resourceLinks: learningActivities.resourceLinks,
+        status: learningActivities.status,
+        createdAt: learningActivities.createdAt,
+        goal: learningGoals,
+      })
+      .from(learningActivities)
+      .innerJoin(learningGoals, eq(learningActivities.goalId, learningGoals.id))
+      .where(
+        and(
+          eq(learningGoals.childId, childId),
+          eq(learningGoals.isActive, true)
+        )
+      );
+  }
+
+  // Quiz Attempts operations
+  async getAttemptsByActivity(activityId: string): Promise<QuizAttempt[]> {
+    return await db.select().from(quizAttempts).where(eq(quizAttempts.activityId, activityId));
+  }
+
+  async getAttemptsByChild(childId: string): Promise<QuizAttempt[]> {
+    return await db.select().from(quizAttempts).where(eq(quizAttempts.childId, childId));
+  }
+
+  async createQuizAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt> {
+    const [newAttempt] = await db.insert(quizAttempts).values(attempt).returning();
+    
+    // If the quiz was passed, award points and mark activity as completed
+    if (newAttempt.passed && newAttempt.pointsAwarded > 0) {
+      await this.updateChildPoints(newAttempt.childId, newAttempt.pointsAwarded);
+      await this.updateActivityStatus(newAttempt.activityId, 'completed');
+    }
+    
+    return newAttempt;
+  }
+
+  async getLatestAttempt(activityId: string, childId: string): Promise<QuizAttempt | undefined> {
+    const [attempt] = await db
+      .select()
+      .from(quizAttempts)
+      .where(
+        and(
+          eq(quizAttempts.activityId, activityId),
+          eq(quizAttempts.childId, childId)
+        )
+      )
+      .orderBy(desc(quizAttempts.completedAt))
+      .limit(1);
+    return attempt;
   }
 }
 

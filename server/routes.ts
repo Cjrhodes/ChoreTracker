@@ -7,8 +7,12 @@ import {
   insertChoreTemplateSchema,
   insertAssignedChoreSchema,
   insertRewardSchema,
-  insertGoalSelectionSchema
+  insertGoalSelectionSchema,
+  insertLearningGoalSchema,
+  insertLearningActivitySchema,
+  insertQuizAttemptSchema
 } from "@shared/schema";
+import { aiContentService } from "./ai-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -298,6 +302,312 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Learning Goals routes
+  app.get('/api/learning/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const parentId = req.user.claims.sub;
+      const { childId } = req.query;
+      
+      let goals;
+      if (childId) {
+        // Verify parent owns this child
+        const child = await storage.getChild(childId);
+        if (!child || child.parentId !== parentId) {
+          return res.status(403).json({ message: "Unauthorized access to child's goals" });
+        }
+        goals = await storage.getLearningGoalsByChild(childId);
+      } else {
+        goals = await storage.getLearningGoalsByParent(parentId);
+      }
+      
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching learning goals:", error);
+      res.status(500).json({ message: "Failed to fetch learning goals" });
+    }
+  });
+
+  app.get('/api/learning/goals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      const goal = await storage.getLearningGoal(id);
+      if (!goal) {
+        return res.status(404).json({ message: "Learning goal not found" });
+      }
+      
+      // Verify parent owns this goal
+      if (goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+      
+      res.json(goal);
+    } catch (error) {
+      console.error("Error fetching learning goal:", error);
+      res.status(500).json({ message: "Failed to fetch learning goal" });
+    }
+  });
+
+  app.post('/api/learning/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const parentId = req.user.claims.sub;
+      const goalData = insertLearningGoalSchema.parse({ ...req.body, parentId });
+      
+      // Verify parent owns the child
+      const child = await storage.getChild(goalData.childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child" });
+      }
+      
+      const goal = await storage.createLearningGoal(goalData);
+      res.json(goal);
+    } catch (error) {
+      console.error("Error creating learning goal:", error);
+      res.status(500).json({ message: "Failed to create learning goal" });
+    }
+  });
+
+  app.patch('/api/learning/goals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const parentId = req.user.claims.sub;
+      
+      const goal = await storage.getLearningGoal(id);
+      if (!goal || goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+      
+      await storage.updateLearningGoalStatus(id, isActive);
+      res.json({ message: "Goal status updated successfully" });
+    } catch (error) {
+      console.error("Error updating learning goal:", error);
+      res.status(500).json({ message: "Failed to update learning goal" });
+    }
+  });
+
+  app.delete('/api/learning/goals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      const goal = await storage.getLearningGoal(id);
+      if (!goal || goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+      
+      await storage.deleteLearningGoal(id);
+      res.json({ message: "Learning goal deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting learning goal:", error);
+      res.status(500).json({ message: "Failed to delete learning goal" });
+    }
+  });
+
+  // AI Content Generation routes
+  app.post('/api/learning/goals/:goalId/generate-synopsis', isAuthenticated, async (req: any, res) => {
+    try {
+      const { goalId } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      const goal = await storage.getLearningGoal(goalId);
+      if (!goal || goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+      
+      const child = await storage.getChild(goal.childId);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Generate AI content
+      const synopsis = await aiContentService.generateSynopsis(goal.subject, child.age, goal.difficulty as any);
+      const learningLinks = await aiContentService.generateLearningLinks(goal.subject, child.age);
+      
+      // Create activity
+      const activity = await storage.createActivity({
+        goalId: goal.id,
+        type: 'synopsis',
+        title: synopsis.title,
+        content: synopsis,
+        resourceLinks: learningLinks,
+      });
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("Error generating synopsis:", error);
+      res.status(500).json({ message: "Failed to generate synopsis" });
+    }
+  });
+
+  app.post('/api/learning/goals/:goalId/generate-quiz', isAuthenticated, async (req: any, res) => {
+    try {
+      const { goalId } = req.params;
+      const { questionCount = 5 } = req.body;
+      const parentId = req.user.claims.sub;
+      
+      const goal = await storage.getLearningGoal(goalId);
+      if (!goal || goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+      
+      const child = await storage.getChild(goal.childId);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Generate AI quiz
+      const quiz = await aiContentService.generateQuiz(goal.subject, child.age, goal.difficulty as any, questionCount);
+      
+      // Create activity
+      const activity = await storage.createActivity({
+        goalId: goal.id,
+        type: 'quiz',
+        title: quiz.title,
+        content: quiz,
+      });
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("Error generating quiz:", error);
+      res.status(500).json({ message: "Failed to generate quiz" });
+    }
+  });
+
+  // Learning Activities routes
+  app.get('/api/learning/activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId, goalId } = req.query;
+      const parentId = req.user.claims.sub;
+      
+      let activities;
+      if (childId) {
+        // Verify parent owns this child
+        const child = await storage.getChild(childId);
+        if (!child || child.parentId !== parentId) {
+          return res.status(403).json({ message: "Unauthorized access to child's activities" });
+        }
+        activities = await storage.getActiveActivitiesByChild(childId);
+      } else if (goalId) {
+        // Verify parent owns this goal
+        const goal = await storage.getLearningGoal(goalId);
+        if (!goal || goal.parentId !== parentId) {
+          return res.status(403).json({ message: "Unauthorized access to goal's activities" });
+        }
+        activities = await storage.getActivitiesByGoal(goalId);
+      } else {
+        return res.status(400).json({ message: "childId or goalId required" });
+      }
+      
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching learning activities:", error);
+      res.status(500).json({ message: "Failed to fetch learning activities" });
+    }
+  });
+
+  app.get('/api/learning/activities/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const activity = await storage.getActivity(id);
+      
+      if (!activity) {
+        return res.status(404).json({ message: "Activity not found" });
+      }
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("Error fetching activity:", error);
+      res.status(500).json({ message: "Failed to fetch activity" });
+    }
+  });
+
+  // Quiz Attempts routes
+  app.post('/api/learning/activities/:activityId/attempts', isAuthenticated, async (req: any, res) => {
+    try {
+      const { activityId } = req.params;
+      const { childId, answers } = req.body;
+      const parentId = req.user.claims.sub;
+      
+      // Verify parent owns this child
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child" });
+      }
+      
+      const activity = await storage.getActivity(activityId);
+      if (!activity || activity.type !== 'quiz') {
+        return res.status(404).json({ message: "Quiz activity not found" });
+      }
+      
+      const goal = await storage.getLearningGoal(activity.goalId);
+      if (!goal) {
+        return res.status(404).json({ message: "Learning goal not found" });
+      }
+      
+      // Calculate score
+      const quiz = activity.content as any;
+      const questions = quiz.questions || [];
+      let score = 0;
+      
+      answers.forEach((answerIndex: number, questionIndex: number) => {
+        if (questions[questionIndex] && questions[questionIndex].correctIndex === answerIndex) {
+          score++;
+        }
+      });
+      
+      const percentage = (score / questions.length) * 100;
+      const passed = percentage >= (quiz.passingScore || 60);
+      const pointsAwarded = passed ? goal.pointsPerUnit : 0;
+      
+      // Create quiz attempt
+      const attempt = await storage.createQuizAttempt({
+        activityId,
+        childId,
+        answers,
+        score,
+        totalQuestions: questions.length,
+        passed,
+        pointsAwarded,
+      });
+      
+      res.json({
+        ...attempt,
+        percentage,
+        feedback: passed ? "Great job! You passed the quiz!" : "Keep practicing! Try again to improve your score."
+      });
+    } catch (error) {
+      console.error("Error submitting quiz attempt:", error);
+      res.status(500).json({ message: "Failed to submit quiz attempt" });
+    }
+  });
+
+  app.get('/api/learning/attempts', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId, activityId } = req.query;
+      const parentId = req.user.claims.sub;
+      
+      if (childId) {
+        // Verify parent owns this child
+        const child = await storage.getChild(childId);
+        if (!child || child.parentId !== parentId) {
+          return res.status(403).json({ message: "Unauthorized access to child's attempts" });
+        }
+        const attempts = await storage.getAttemptsByChild(childId);
+        res.json(attempts);
+      } else if (activityId) {
+        const attempts = await storage.getAttemptsByActivity(activityId);
+        res.json(attempts);
+      } else {
+        return res.status(400).json({ message: "childId or activityId required" });
+      }
+    } catch (error) {
+      console.error("Error fetching quiz attempts:", error);
+      res.status(500).json({ message: "Failed to fetch quiz attempts" });
     }
   });
 
