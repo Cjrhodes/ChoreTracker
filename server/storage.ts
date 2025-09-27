@@ -289,7 +289,69 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     if (chore) {
+      // Get chore template to determine category
+      const template = await this.getChoreTemplate(chore.choreTemplateId);
+      const category = template?.category || 'household';
+
+      // Get current child data for level calculation
+      const child = await this.getChild(chore.childId);
+      if (!child) return;
+
+      // Award experience points (equal to points awarded)
+      const newExperiencePoints = child.experiencePoints + pointsAwarded;
+      const newLevel = this.calculateChildLevel(newExperiencePoints);
+
+      // Update child's total points, experience points, and level
       await this.updateChildPoints(chore.childId, pointsAwarded);
+      await this.updateChildLevel(chore.childId, newLevel, newExperiencePoints);
+
+      // Update daily progress tracking
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Get existing daily progress or create new
+      let dailyProgress = await this.getDailyProgress(chore.childId, today);
+      let categoriesCompleted: string[] = [];
+      
+      if (dailyProgress) {
+        categoriesCompleted = Array.isArray(dailyProgress.categoriesCompleted) 
+          ? dailyProgress.categoriesCompleted as string[]
+          : [];
+        
+        // Add new category if not already included
+        if (!categoriesCompleted.includes(category)) {
+          categoriesCompleted.push(category);
+        }
+      } else {
+        categoriesCompleted = [category];
+      }
+
+      // Calculate bonus points for multiple categories
+      const bonusPoints = this.calculateDailyBonus(categoriesCompleted);
+      const totalTasksCompleted = (dailyProgress?.totalTasksCompleted || 0) + 1;
+      
+      // Calculate current streak (simplified - assume consecutive days for now)
+      const currentStreak = await this.getCurrentStreak(chore.childId);
+      const newStreak = currentStreak + 1;
+
+      // Create or update daily progress
+      await this.createOrUpdateDailyProgress({
+        childId: chore.childId,
+        date: todayStr,
+        categoriesCompleted,
+        totalTasksCompleted,
+        bonusPointsEarned: bonusPoints,
+        currentStreak: newStreak,
+      });
+
+      // Award bonus points to child if any
+      if (bonusPoints > 0) {
+        await this.updateChildPoints(chore.childId, bonusPoints);
+        // Also add bonus to experience points
+        const finalExperiencePoints = newExperiencePoints + bonusPoints;
+        const finalLevel = this.calculateChildLevel(finalExperiencePoints);
+        await this.updateChildLevel(chore.childId, finalLevel, finalExperiencePoints);
+      }
     }
   }
 
