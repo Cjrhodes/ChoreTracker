@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Star, Trophy, Target, Clock, Gift } from "lucide-react";
-import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection } from "@shared/schema";
+import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award } from "lucide-react";
+import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, Quiz, QuizAttempt } from "@shared/schema";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -42,6 +42,21 @@ export default function ChildDashboard() {
     enabled: !!child,
   });
 
+  const { data: learningGoals = [] } = useQuery<LearningGoal[]>({
+    queryKey: ["/api/learning-goals", "child", child?.id],
+    enabled: !!child,
+  });
+
+  const { data: learningActivities = [] } = useQuery<LearningActivity[]>({
+    queryKey: ["/api/learning-activities", "child", child?.id],
+    enabled: !!child,
+  });
+
+  const { data: activeQuiz } = useQuery<Quiz>({
+    queryKey: ["/api/quizzes", "active", child?.id],
+    enabled: !!child,
+  });
+
   const completeChore = useMutation({
     mutationFn: async (choreId: string) => {
       await apiRequest("PATCH", `/api/assigned-chores/${choreId}/complete`);
@@ -69,6 +84,44 @@ export default function ChildDashboard() {
         title: "Goal Selected! 🎯",
         description: "Start completing chores to work toward your reward!",
       });
+    },
+  });
+
+  const generateContent = useMutation({
+    mutationFn: async (goalId: string) => {
+      await apiRequest("POST", `/api/learning-goals/${goalId}/generate-content`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/learning-activities", "child", child?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes", "active", child?.id] });
+      toast({
+        title: "Learning adventure ready! 📚",
+        description: "New learning activities have been created for you!",
+      });
+    },
+  });
+
+  const submitQuizAnswer = useMutation({
+    mutationFn: async ({ quizId, selectedAnswer }: { quizId: string; selectedAnswer: string }) => {
+      return await apiRequest("POST", `/api/quizzes/${quizId}/submit`, {
+        childId: child?.id,
+        selectedAnswer,
+      });
+    },
+    onSuccess: (data: { isCorrect: boolean; pointsEarned: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", child?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes", "active", child?.id] });
+      if (data.isCorrect) {
+        toast({
+          title: "Correct! 🎉",
+          description: `Great job! You earned ${data.pointsEarned} points!`,
+        });
+      } else {
+        toast({
+          title: "Keep trying! 💪",
+          description: "That's not quite right, but don't give up!",
+        });
+      }
     },
   });
 
@@ -153,45 +206,138 @@ export default function ChildDashboard() {
         )}
       </div>
 
-      {/* Row 3: Today's Quests (scrollable) */}
+      {/* Row 3: Activities Hub (scrollable) */}
       <div className="min-h-0 overflow-y-auto border border-border rounded p-2">
-        <div className="text-xs font-medium text-muted-foreground mb-2">
-          Today's Quests ({pendingChores.length} left)
-        </div>
-        <div className="space-y-1">
-          {choresLoading ? (
-            <div className="text-xs text-muted-foreground">Loading tasks...</div>
-          ) : pendingChores.length === 0 ? (
-            <div className="text-center text-xs text-muted-foreground">
-              🎉 All done! Great job today!
+        {/* Active Quiz Section */}
+        {activeQuiz && (
+          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="w-4 h-4 text-purple-600" />
+              <span className="text-sm font-bold text-purple-800">Learning Quiz!</span>
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">+{activeQuiz.pointsReward} pts</span>
             </div>
-          ) : (
-            pendingChores.slice(0, 3).map((chore) => (
-              <div key={chore.id} className="flex items-center justify-between h-8 bg-muted rounded px-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm">{chore.choreTemplate.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">{chore.choreTemplate.name}</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground whitespace-nowrap">+{chore.choreTemplate.pointValue}pt</div>
-                </div>
+            <div className="text-sm mb-3 text-gray-700">{activeQuiz.question}</div>
+            <div className="space-y-2">
+              {activeQuiz.options.map((option, index) => (
                 <Button
+                  key={index}
+                  variant="outline"
                   size="sm"
-                  onClick={() => completeChore.mutate(chore.id)}
-                  disabled={completeChore.isPending}
-                  data-testid={`button-complete-${chore.id}`}
-                  className="text-xs px-2 py-1 h-6 ml-2"
+                  onClick={() => submitQuizAnswer.mutate({ quizId: activeQuiz.id, selectedAnswer: option })}
+                  disabled={submitQuizAnswer.isPending}
+                  className="w-full justify-start text-xs h-8 px-3 border-purple-200 hover:bg-purple-50"
+                  data-testid={`button-quiz-option-${index}`}
                 >
-                  Complete
+                  <span className="mr-2 font-bold">{String.fromCharCode(65 + index)}.</span>
+                  {option}
                 </Button>
-              </div>
-            ))
-          )}
-          {pendingChores.length > 3 && (
-            <div className="text-center text-xs text-muted-foreground">
-              +{pendingChores.length - 3} more tasks
+              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Learning Activities Section */}
+        {learningActivities.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-medium text-blue-800">Learning Adventures</span>
+            </div>
+            <div className="space-y-2">
+              {learningActivities.slice(0, 2).map((activity) => (
+                <div key={activity.id} className="p-2 bg-blue-50 border border-blue-200 rounded">
+                  <div className="text-xs font-medium text-blue-900 mb-1">{activity.title}</div>
+                  <div className="text-xs text-blue-700 mb-2">{activity.synopsis}</div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="text-xs h-6 px-2 border-blue-300">
+                      <Play className="w-3 h-3 mr-1" />
+                      Start
+                    </Button>
+                    {activity.learningLink && (
+                      <Button size="sm" variant="outline" className="text-xs h-6 px-2 border-blue-300">
+                        Learn More
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Learning Goals Section */}
+        {learningGoals.length > 0 && !activeQuiz && learningActivities.length === 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-medium text-green-800">Ready to Learn?</span>
+            </div>
+            <div className="space-y-2">
+              {learningGoals.slice(0, 2).map((goal) => (
+                <div key={goal.id} className="p-2 bg-green-50 border border-green-200 rounded">
+                  <div className="text-xs font-medium text-green-900 mb-1">{goal.subject}</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-green-700">Ready for new activities!</span>
+                    <Button
+                      size="sm"
+                      onClick={() => generateContent.mutate(goal.id)}
+                      disabled={generateContent.isPending}
+                      className="text-xs h-6 px-2 bg-green-100 hover:bg-green-200 text-green-800"
+                      data-testid={`button-generate-${goal.id}`}
+                    >
+                      <Award className="w-3 h-3 mr-1" />
+                      Start
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chores Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="w-4 h-4 text-orange-600" />
+            <span className="text-xs font-medium text-orange-800">
+              Today's Chores ({pendingChores.length} left)
+            </span>
+          </div>
+          <div className="space-y-1">
+            {choresLoading ? (
+              <div className="text-xs text-muted-foreground">Loading tasks...</div>
+            ) : pendingChores.length === 0 ? (
+              <div className="text-center text-xs text-muted-foreground py-4">
+                🎉 All chores done! Amazing work!
+              </div>
+            ) : (
+              pendingChores.slice(0, 3).map((chore) => (
+                <div key={chore.id} className="flex items-center justify-between h-8 bg-orange-50 border border-orange-200 rounded px-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sm">{chore.choreTemplate.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">{chore.choreTemplate.name}</div>
+                    </div>
+                    <div className="text-xs text-orange-600 whitespace-nowrap">+{chore.choreTemplate.pointValue}pt</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => completeChore.mutate(chore.id)}
+                    disabled={completeChore.isPending}
+                    data-testid={`button-complete-${chore.id}`}
+                    className="text-xs px-2 py-1 h-6 ml-2 bg-orange-100 hover:bg-orange-200 text-orange-800"
+                  >
+                    Complete
+                  </Button>
+                </div>
+              ))
+            )}
+            {pendingChores.length > 3 && (
+              <div className="text-center text-xs text-muted-foreground">
+                +{pendingChores.length - 3} more chores
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
