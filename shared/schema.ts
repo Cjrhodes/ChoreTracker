@@ -43,6 +43,8 @@ export const children = pgTable("children", {
   name: varchar("name").notNull(),
   age: integer("age").notNull(),
   totalPoints: integer("total_points").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  experiencePoints: integer("experience_points").notNull().default(0),
   currentGoalId: varchar("current_goal_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -54,6 +56,7 @@ export const choreTemplates = pgTable("chore_templates", {
   description: text("description"),
   pointValue: integer("point_value").notNull(),
   icon: varchar("icon").notNull().default("🧹"),
+  category: varchar("category").notNull().default("household"), // household, exercise, educational, outdoor
   frequency: varchar("frequency").notNull().default("daily"), // daily, weekly, custom
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -134,6 +137,18 @@ export const quizAttempts = pgTable("quiz_attempts", {
   completedAt: timestamp("completed_at").defaultNow(),
 });
 
+// Daily activity tracking for level progression and bonus points
+export const dailyProgress = pgTable("daily_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  date: date("date").notNull(),
+  categoriesCompleted: jsonb("categories_completed").notNull(), // Array of completed categories
+  totalTasksCompleted: integer("total_tasks_completed").notNull().default(0),
+  bonusPointsEarned: integer("bonus_points_earned").notNull().default(0),
+  currentStreak: integer("current_streak").notNull().default(0), // Days in a row with activity
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   children: many(children),
@@ -152,6 +167,7 @@ export const childrenRelations = relations(children, ({ one, many }) => ({
   goalSelections: many(goalSelections),
   learningGoals: many(learningGoals),
   quizAttempts: many(quizAttempts),
+  dailyProgress: many(dailyProgress),
 }));
 
 export const choreTemplatesRelations = relations(choreTemplates, ({ one, many }) => ({
@@ -234,6 +250,13 @@ export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
   }),
 }));
 
+export const dailyProgressRelations = relations(dailyProgress, ({ one }) => ({
+  child: one(children, {
+    fields: [dailyProgress.childId],
+    references: [children.id],
+  }),
+}));
+
 // Insert schemas
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
@@ -243,6 +266,8 @@ export const insertChildSchema = createInsertSchema(children).omit({
 export const insertChoreTemplateSchema = createInsertSchema(choreTemplates).omit({
   id: true,
   createdAt: true,
+}).extend({
+  category: z.enum(['household', 'exercise', 'educational', 'outdoor']),
 });
 
 export const insertAssignedChoreSchema = createInsertSchema(assignedChores).omit({
@@ -290,6 +315,11 @@ export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({
   completedAt: true,
 });
 
+export const insertDailyProgressSchema = createInsertSchema(dailyProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -311,3 +341,5 @@ export type LearningActivity = typeof learningActivities.$inferSelect;
 export type InsertLearningActivity = z.infer<typeof insertLearningActivitySchema>;
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
+export type DailyProgress = typeof dailyProgress.$inferSelect;
+export type InsertDailyProgress = z.infer<typeof insertDailyProgressSchema>;
