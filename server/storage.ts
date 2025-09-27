@@ -9,6 +9,7 @@ import {
   learningGoals,
   learningActivities,
   quizAttempts,
+  dailyProgress,
   type User,
   type UpsertUser,
   type Child,
@@ -29,6 +30,8 @@ import {
   type InsertLearningActivity,
   type QuizAttempt,
   type InsertQuizAttempt,
+  type DailyProgress,
+  type InsertDailyProgress,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -105,6 +108,16 @@ export interface IStorage {
   // Stats
   getCompletedChoresCount(childId: string, date: Date): Promise<number>;
   getRecentActivity(parentId: string): Promise<any[]>;
+
+  // Level and Daily Progress operations
+  updateChildLevel(childId: string, level: number, experiencePoints: number): Promise<void>;
+  calculateChildLevel(experiencePoints: number): number;
+  getDailyProgress(childId: string, date: Date): Promise<DailyProgress | undefined>;
+  createOrUpdateDailyProgress(progress: InsertDailyProgress): Promise<DailyProgress>;
+  getTodayProgress(childId: string): Promise<DailyProgress | undefined>;
+  calculateDailyBonus(categoriesCompleted: string[]): number;
+  getCurrentStreak(childId: string): Promise<number>;
+  getChoresByCategory(parentId: string, category: string): Promise<ChoreTemplate[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -600,6 +613,104 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(learningActivities.createdAt))
       .limit(1);
     return quiz;
+  }
+
+
+  // Level and Daily Progress operations
+  async updateChildLevel(childId: string, level: number, experiencePoints: number): Promise<void> {
+    await db
+      .update(children)
+      .set({ level, experiencePoints })
+      .where(eq(children.id, childId));
+  }
+
+  calculateChildLevel(experiencePoints: number): number {
+    // Level progression: Level 1: 0-99 XP, Level 2: 100-299 XP, Level 3: 300-599 XP, etc.
+    // Formula: each level requires 100 + (level-1) * 200 total XP
+    let level = 1;
+    let xpRequired = 0;
+    
+    while (experiencePoints >= xpRequired) {
+      const nextLevelRequirement = 100 + (level - 1) * 200;
+      if (experiencePoints < xpRequired + nextLevelRequirement) {
+        break;
+      }
+      xpRequired += nextLevelRequirement;
+      level++;
+    }
+    
+    return level;
+  }
+
+  async getDailyProgress(childId: string, date: Date): Promise<DailyProgress | undefined> {
+    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const [progress] = await db
+      .select()
+      .from(dailyProgress)
+      .where(
+        and(
+          eq(dailyProgress.childId, childId),
+          eq(dailyProgress.date, dateStr)
+        )
+      );
+    return progress;
+  }
+
+  async createOrUpdateDailyProgress(progress: InsertDailyProgress): Promise<DailyProgress> {
+    const [result] = await db
+      .insert(dailyProgress)
+      .values(progress)
+      .onConflictDoUpdate({
+        target: [dailyProgress.childId, dailyProgress.date],
+        set: {
+          categoriesCompleted: progress.categoriesCompleted,
+          totalTasksCompleted: progress.totalTasksCompleted,
+          bonusPointsEarned: progress.bonusPointsEarned,
+          currentStreak: progress.currentStreak,
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getTodayProgress(childId: string): Promise<DailyProgress | undefined> {
+    const today = new Date();
+    return await this.getDailyProgress(childId, today);
+  }
+
+  calculateDailyBonus(categoriesCompleted: string[]): number {
+    // Award bonus points for completing tasks in multiple categories
+    const uniqueCategories = Array.from(new Set(categoriesCompleted));
+    const categoryCount = uniqueCategories.length;
+    
+    if (categoryCount >= 4) return 50; // All 4 categories: household, exercise, educational, outdoor
+    if (categoryCount >= 3) return 30; // 3 categories
+    if (categoryCount >= 2) return 15; // 2 categories
+    return 0; // Single category, no bonus
+  }
+
+  async getCurrentStreak(childId: string): Promise<number> {
+    // Get the most recent daily progress record to check current streak
+    const [latestProgress] = await db
+      .select()
+      .from(dailyProgress)
+      .where(eq(dailyProgress.childId, childId))
+      .orderBy(desc(dailyProgress.date))
+      .limit(1);
+    
+    return latestProgress?.currentStreak || 0;
+  }
+
+  async getChoresByCategory(parentId: string, category: string): Promise<ChoreTemplate[]> {
+    return await db
+      .select()
+      .from(choreTemplates)
+      .where(
+        and(
+          eq(choreTemplates.parentId, parentId),
+          eq(choreTemplates.category, category)
+        )
+      );
   }
 }
 
