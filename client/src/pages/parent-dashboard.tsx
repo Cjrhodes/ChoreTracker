@@ -385,92 +385,95 @@ export default function ParentDashboard() {
               <GraduationCap className="w-5 h-5" />
               Learning Goals
             </h3>
-            <span className="text-sm text-muted-foreground">{learningGoals.length} active</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{learningGoals.length} active</span>
+              <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="flex items-center gap-1" data-testid="button-add-learning-goal">
+                    <Plus className="w-3 h-3" />
+                    Add Goal
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Learning Goal</DialogTitle>
+                  </DialogHeader>
+                  <Form {...learningGoalForm}>
+                    <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={learningGoalForm.control}
+                        name="childId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Child</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-child">
+                                  <SelectValue placeholder="Select a child" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {children.map((child) => (
+                                  <SelectItem key={child.id} value={child.id}>
+                                    {child.name} (Age {child.age})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={learningGoalForm.control}
+                        name="subject"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subject</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="e.g., Ocean Animals, Space, History" data-testid="input-subject" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={learningGoalForm.control}
+                        name="difficulty"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Difficulty Level</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-difficulty">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="easy">Easy</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="hard">Hard</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
+                        {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {learningGoals.length === 0 ? (
               <div className="text-center py-8">
                 <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">No learning goals yet</p>
-                <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="flex items-center gap-2" data-testid="button-add-learning-goal">
-                      <BookOpen className="w-4 h-4" />
-                      Create Learning Goal
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Learning Goal</DialogTitle>
-                    </DialogHeader>
-                    <Form {...learningGoalForm}>
-                      <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="childId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Child</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-child">
-                                    <SelectValue placeholder="Select a child" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {children.map((child) => (
-                                    <SelectItem key={child.id} value={child.id}>
-                                      {child.name} (Age {child.age})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="subject"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Subject</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., Math, Science, History" data-testid="input-subject" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="difficulty"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Difficulty Level</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-difficulty">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="easy">Easy</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="hard">Hard</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
-                          {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
+                <p className="text-sm text-muted-foreground">No learning goals yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Click "Add Goal" above to create your first learning goal</p>
               </div>
             ) : (
               learningGoals.map((goal) => (
