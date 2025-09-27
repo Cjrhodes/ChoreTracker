@@ -153,11 +153,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/assigned-chores', isAuthenticated, async (req: any, res) => {
     try {
+      console.log("Request body:", req.body);
       const choreData = insertAssignedChoreSchema.parse(req.body);
       const chore = await storage.assignChore(choreData);
-      res.json(chore);
+      res.status(201).json(chore);
     } catch (error) {
       console.error("Error assigning chore:", error);
+      
+      // Handle Zod validation errors
+      if (error && typeof error === 'object' && 'issues' in error) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          details: (error as any).issues,
+          expected: "Expected fields: childId, choreTemplateId, assignedDate"
+        });
+      }
+      
       res.status(500).json({ message: "Failed to assign chore" });
     }
   });
