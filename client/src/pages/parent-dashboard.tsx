@@ -11,8 +11,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp } from "lucide-react";
+import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen } from "lucide-react";
 import { useState } from "react";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
@@ -24,6 +24,7 @@ export default function ParentDashboard() {
   const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
   const [isChoreDialogOpen, setIsChoreDialogOpen] = useState(false);
   const [isRewardDialogOpen, setIsRewardDialogOpen] = useState(false);
+  const [isLearningGoalDialogOpen, setIsLearningGoalDialogOpen] = useState(false);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
@@ -37,6 +38,11 @@ export default function ParentDashboard() {
 
   const { data: rewards = [] } = useQuery<Reward[]>({
     queryKey: ["/api/rewards"],
+    enabled: !!user,
+  });
+
+  const { data: learningGoals = [] } = useQuery<LearningGoal[]>({
+    queryKey: ["/api/learning/goals"],
     enabled: !!user,
   });
 
@@ -59,6 +65,11 @@ export default function ParentDashboard() {
   const rewardForm = useForm<InsertReward>({
     resolver: zodResolver(insertRewardSchema),
     defaultValues: { name: "", description: "", pointsCost: 100, category: "item", parentId: "" },
+  });
+
+  const learningGoalForm = useForm<InsertLearningGoal>({
+    resolver: zodResolver(insertLearningGoalSchema),
+    defaultValues: { childId: "", subject: "", difficulty: "medium", targetUnits: 5, pointsPerUnit: 10, parentId: "" },
   });
 
   const createChild = useMutation({
@@ -97,6 +108,18 @@ export default function ParentDashboard() {
     },
   });
 
+  const createLearningGoal = useMutation({
+    mutationFn: async (data: InsertLearningGoal) => {
+      await apiRequest("POST", "/api/learning/goals", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/learning/goals"] });
+      setIsLearningGoalDialogOpen(false);
+      learningGoalForm.reset();
+      toast({ title: "Learning Goal Created! 🎯", description: "AI will help create educational content." });
+    },
+  });
+
   // Calculate summary statistics
   const totalPoints = children.reduce((sum, child) => sum + child.totalPoints, 0);
   const completedToday = recentChores.filter(chore => {
@@ -113,94 +136,102 @@ export default function ParentDashboard() {
   }).length;
 
   return (
-    <div className="responsive-container grid h-[calc(100dvh-143px)] grid-rows-[64px_48px_minmax(0,1fr)] gap-2 p-0 overflow-hidden">
-      {/* Row 1: Title + KPI Chips (64px) */}
-      <div className="h-[64px] flex items-center justify-between border border-border rounded px-2">
-        <h2 className="text-xs font-bold text-foreground" data-testid="text-dashboard-title">
-          Parent Dashboard
-        </h2>
-        <div className="flex gap-1">
-          <div className="bg-green-50 border border-green-200 rounded px-2 py-1 text-center min-w-[50px]">
-            <div className="text-xs font-bold text-green-600 leading-none" data-testid="text-completed-today">{completedToday}</div>
-            <div className="text-xs text-green-700 leading-none">Today</div>
+    <div className="responsive-container grid h-[calc(100dvh-143px)] grid-rows-[80px_100px_minmax(0,1fr)] gap-3 p-0 overflow-hidden">
+      {/* Row 1: Enhanced KPI Header (80px) */}
+      <div className="h-[80px] bg-gradient-to-r from-blue-50 to-purple-50 border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between h-full">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold text-foreground" data-testid="text-dashboard-title">
+              Parent Dashboard
+            </h2>
+            <p className="text-sm text-muted-foreground">Manage chores & learning goals</p>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1 text-center min-w-[50px]">
-            <div className="text-xs font-bold text-blue-600 leading-none" data-testid="text-total-points">{totalPoints}</div>
-            <div className="text-xs text-blue-700 leading-none">Points</div>
-          </div>
-          <div className="bg-orange-50 border border-orange-200 rounded px-2 py-1 text-center min-w-[50px]">
-            <div className="text-xs font-bold text-orange-600 leading-none" data-testid="text-pending-approvals">{pendingApprovals}</div>
-            <div className="text-xs text-orange-700 leading-none">Pending</div>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded px-2 py-1 text-center min-w-[50px]">
-            <div className="text-xs font-bold text-purple-600 leading-none" data-testid="text-week-completed">{thisWeekCompleted}</div>
-            <div className="text-xs text-purple-700 leading-none">Week</div>
+          <div className="flex gap-3">
+            <div className="bg-white/80 border border-green-200 rounded-lg px-4 py-2 text-center min-w-[70px] shadow-sm">
+              <div className="text-lg font-bold text-green-600" data-testid="text-completed-today">{completedToday}</div>
+              <div className="text-xs text-green-700">Today</div>
+            </div>
+            <div className="bg-white/80 border border-blue-200 rounded-lg px-4 py-2 text-center min-w-[70px] shadow-sm">
+              <div className="text-lg font-bold text-blue-600" data-testid="text-total-points">{totalPoints}</div>
+              <div className="text-xs text-blue-700">Points</div>
+            </div>
+            <div className="bg-white/80 border border-orange-200 rounded-lg px-4 py-2 text-center min-w-[70px] shadow-sm">
+              <div className="text-lg font-bold text-orange-600" data-testid="text-pending-approvals">{pendingApprovals}</div>
+              <div className="text-xs text-orange-700">Pending</div>
+            </div>
+            <div className="bg-white/80 border border-purple-200 rounded-lg px-4 py-2 text-center min-w-[70px] shadow-sm">
+              <div className="text-lg font-bold text-purple-600" data-testid="text-week-completed">{thisWeekCompleted}</div>
+              <div className="text-xs text-purple-700">Week</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Row 2: Primary Action Buttons (48px) */}
-      <div className="h-[48px] flex items-center gap-2 border border-border rounded px-2">
-        <Dialog open={isChildDialogOpen} onOpenChange={setIsChildDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="flex items-center gap-1" data-testid="button-add-child">
-              <Users className="w-3 h-3" />
-              Add Child
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Child</DialogTitle>
-            </DialogHeader>
-            <Form {...childForm}>
-              <form onSubmit={childForm.handleSubmit((data) => createChild.mutate(data))} className="space-y-4">
-                <FormField
-                  control={childForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-child-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={childForm.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-child-age" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={createChild.isPending} data-testid="button-save-child">
-                  {createChild.isPending ? "Adding..." : "Add Child"}
+      {/* Row 2: Enhanced Action Buttons (100px) */}
+      <div className="h-[100px] bg-white border border-border rounded-lg p-4">
+        <div className="flex flex-col h-full">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Quick Actions</h3>
+          <div className="flex items-center gap-3 flex-1">
+            <Dialog open={isChildDialogOpen} onOpenChange={setIsChildDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="default" className="flex items-center gap-2" data-testid="button-add-child">
+                  <Users className="w-4 h-4" />
+                  Add Child
                 </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Child</DialogTitle>
+                </DialogHeader>
+                <Form {...childForm}>
+                  <form onSubmit={childForm.handleSubmit((data) => createChild.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={childForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-child-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={childForm.control}
+                      name="age"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-child-age" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createChild.isPending} data-testid="button-save-child">
+                      {createChild.isPending ? "Adding..." : "Add Child"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
 
-        <Dialog open={isChoreDialogOpen} onOpenChange={setIsChoreDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline" className="flex items-center gap-1" data-testid="button-add-chore">
-              <CheckCircle className="w-3 h-3" />
-              Add Chore
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Chore Template</DialogTitle>
-            </DialogHeader>
-            <Form {...choreForm}>
-              <form onSubmit={choreForm.handleSubmit((data) => createChoreTemplate.mutate(data))} className="space-y-4">
+            <Dialog open={isChoreDialogOpen} onOpenChange={setIsChoreDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="default" variant="outline" className="flex items-center gap-2" data-testid="button-add-chore">
+                  <CheckCircle className="w-4 h-4" />
+                  Add Chore
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Chore Template</DialogTitle>
+                </DialogHeader>
+                <Form {...choreForm}>
+                  <form onSubmit={choreForm.handleSubmit((data) => createChoreTemplate.mutate(data))} className="space-y-4">
                 <FormField
                   control={choreForm.control}
                   name="name"
@@ -282,110 +313,161 @@ export default function ParentDashboard() {
           </DialogContent>
         </Dialog>
 
-        {pendingApprovals > 0 && (
-          <Button size="sm" variant="outline" className="flex items-center gap-1 bg-orange-50 border-orange-200">
-            <Activity className="w-3 h-3" />
-            Review Approvals ({pendingApprovals})
-          </Button>
-        )}
+            {pendingApprovals > 0 && (
+              <Button size="default" variant="outline" className="flex items-center gap-2 bg-orange-50 border-orange-200">
+                <Activity className="w-4 h-4" />
+                Review Approvals ({pendingApprovals})
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Row 3: Three Micro-Panels (scrollable) */}
-      <div className="min-h-0 grid grid-cols-3 gap-2">
-        {/* Children Micro-Panel */}
-        <div className="min-h-0 overflow-y-auto border border-border rounded p-2">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Children ({children.length})</div>
-          <div className="space-y-1">
+      {/* Row 3: Large Rectangular Panels for Learning Content */}
+      <div className="min-h-0 grid grid-cols-2 gap-4">
+        {/* Family Management Panel - Larger Rectangle */}
+        <div className="bg-white border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Family Overview</h3>
+            <span className="text-sm text-muted-foreground">{children.length} children</span>
+          </div>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {childrenLoading ? (
-              <div className="text-xs text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground">Loading...</div>
             ) : children.length === 0 ? (
-              <div className="text-xs text-muted-foreground">No children yet</div>
-            ) : (
-              children.slice(0, 5).map((child) => (
-                <div key={child.id} className="flex items-center justify-between text-xs h-6 bg-muted rounded px-2">
-                  <div className="flex items-center gap-1">
-                    <span>😊</span>
-                    <span className="font-medium truncate">{child.name}</span>
-                  </div>
-                  <span className="text-primary font-semibold">{child.totalPoints}</span>
-                </div>
-              ))
-            )}
-            {children.length > 5 && (
-              <div className="text-xs text-muted-foreground text-center">+{children.length - 5} more</div>
-            )}
-          </div>
-        </div>
-
-        {/* Activity Micro-Panel */}
-        <div className="min-h-0 overflow-y-auto border border-border rounded p-2">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Recent Activity</div>
-          <div className="space-y-1">
-            {pendingApprovals > 0 && (
-              <div className="bg-orange-50 border border-orange-200 rounded p-1">
-                <div className="text-xs font-medium text-orange-800">{pendingApprovals} pending</div>
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No children yet</p>
               </div>
-            )}
-            {recentChores.length === 0 ? (
-              <div className="text-xs text-muted-foreground">No activity yet</div>
             ) : (
-              recentChores.slice(0, 6).map((chore) => (
-                <div key={chore.id} className="flex items-center justify-between text-xs h-6 bg-muted rounded px-2">
-                  <div className="flex items-center gap-1 flex-1 min-w-0">
-                    <span>{chore.choreTemplate.icon}</span>
-                    <span className="truncate">{chore.choreTemplate.name}</span>
+              children.map((child) => (
+                <div key={child.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">😊</div>
+                    <div>
+                      <div className="font-medium">{child.name}</div>
+                      <div className="text-sm text-muted-foreground">{child.age} years old</div>
+                    </div>
                   </div>
-                  <span className="text-muted-foreground">{chore.completedAt ? 'Done' : 'New'}</span>
+                  <div className="text-right">
+                    <div className="font-semibold text-primary">{child.totalPoints} pts</div>
+                    <div className="text-xs text-muted-foreground">Total earned</div>
+                  </div>
                 </div>
               ))
-            )}
-            {recentChores.length > 6 && (
-              <div className="text-xs text-muted-foreground text-center">+{recentChores.length - 6} more</div>
             )}
           </div>
         </div>
 
-        {/* Catalog Micro-Panel */}
-        <div className="min-h-0 overflow-y-auto border border-border rounded p-2">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Catalog</div>
-          <div className="space-y-1">
-            {/* Chores Mini-Section */}
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Chores ({choreTemplates.length})</div>
-              {choreTemplates.length === 0 ? (
-                <div className="text-xs text-muted-foreground">None yet</div>
-              ) : (
-                choreTemplates.slice(0, 3).map((chore) => (
-                  <div key={chore.id} className="flex items-center gap-1 text-xs h-6 bg-muted rounded px-2">
-                    <span>{chore.icon}</span>
-                    <span className="truncate flex-1">{chore.name}</span>
-                    <span className="text-xs">{chore.pointValue}pt</span>
+        {/* Learning Goals Panel - Larger Rectangle */}
+        <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <GraduationCap className="w-5 h-5" />
+              Learning Goals
+            </h3>
+            <span className="text-sm text-muted-foreground">{learningGoals.length} active</span>
+          </div>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {learningGoals.length === 0 ? (
+              <div className="text-center py-8">
+                <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">No learning goals yet</p>
+                <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="flex items-center gap-2" data-testid="button-add-learning-goal">
+                      <BookOpen className="w-4 h-4" />
+                      Create Learning Goal
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create Learning Goal</DialogTitle>
+                    </DialogHeader>
+                    <Form {...learningGoalForm}>
+                      <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
+                        <FormField
+                          control={learningGoalForm.control}
+                          name="childId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Child</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-child">
+                                    <SelectValue placeholder="Select a child" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {children.map((child) => (
+                                    <SelectItem key={child.id} value={child.id}>
+                                      {child.name} (Age {child.age})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={learningGoalForm.control}
+                          name="subject"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subject</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., Math, Science, History" data-testid="input-subject" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={learningGoalForm.control}
+                          name="difficulty"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Difficulty Level</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-difficulty">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="easy">Easy</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="hard">Hard</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
+                          {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            ) : (
+              learningGoals.map((goal) => (
+                <div key={goal.id} className="bg-white/80 p-3 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">{goal.subject}</div>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                      {goal.difficulty}
+                    </span>
                   </div>
-                ))
-              )}
-              {choreTemplates.length > 3 && (
-                <div className="text-xs text-muted-foreground">+{choreTemplates.length - 3} more</div>
-              )}
-            </div>
-            
-            {/* Rewards Mini-Section */}
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Rewards ({rewards.length})</div>
-              {rewards.length === 0 ? (
-                <div className="text-xs text-muted-foreground">None yet</div>
-              ) : (
-                rewards.slice(0, 3).map((reward) => (
-                  <div key={reward.id} className="flex items-center gap-1 text-xs h-6 bg-muted rounded px-2">
-                    <span>🎁</span>
-                    <span className="truncate flex-1">{reward.name}</span>
-                    <span className="text-xs">{reward.pointsCost}pt</span>
+                  <div className="text-sm text-muted-foreground">
+                    Target: {goal.targetUnits} activities • {goal.pointsPerUnit} pts each
                   </div>
-                ))
-              )}
-              {rewards.length > 3 && (
-                <div className="text-xs text-muted-foreground">+{rewards.length - 3} more</div>
-              )}
-            </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
