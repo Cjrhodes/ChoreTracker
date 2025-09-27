@@ -86,7 +86,7 @@ export default function ParentDashboard() {
 
   const choreForm = useForm<InsertChoreTemplate>({
     resolver: zodResolver(insertChoreTemplateSchema),
-    defaultValues: { name: "", description: "", pointValue: 10, icon: "🧹", frequency: "daily", parentId: "" },
+    defaultValues: { name: "", description: "", pointValue: 10, icon: "🧹", category: "household", frequency: "daily", parentId: "" },
   });
 
   const rewardForm = useForm<InsertReward>({
@@ -283,9 +283,50 @@ export default function ParentDashboard() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Chore Name</FormLabel>
+                      <FormLabel>Task Name</FormLabel>
                       <FormControl>
                         <Input {...field} data-testid="input-chore-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={choreForm.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-chore-category">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="household">🧹 Household</SelectItem>
+                          <SelectItem value="exercise">🏃‍♂️ Exercise</SelectItem>
+                          <SelectItem value="educational">📚 Educational</SelectItem>
+                          <SelectItem value="outdoor">🌳 Outdoor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={choreForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder="Describe the task..." 
+                          data-testid="input-chore-description" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -300,6 +341,35 @@ export default function ParentDashboard() {
                       <FormControl>
                         <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-chore-points" />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={choreForm.control}
+                  name="icon"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Icon</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-chore-icon">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="🧹">🧹 Cleaning</SelectItem>
+                          <SelectItem value="🏃‍♂️">🏃‍♂️ Running</SelectItem>
+                          <SelectItem value="🏋️‍♀️">🏋️‍♀️ Strength</SelectItem>
+                          <SelectItem value="🚴‍♂️">🚴‍♂️ Cycling</SelectItem>
+                          <SelectItem value="🏊‍♀️">🏊‍♀️ Swimming</SelectItem>
+                          <SelectItem value="📚">📚 Reading</SelectItem>
+                          <SelectItem value="✏️">✏️ Writing</SelectItem>
+                          <SelectItem value="🧮">🧮 Math</SelectItem>
+                          <SelectItem value="🌳">🌳 Outdoor</SelectItem>
+                          <SelectItem value="🎯">🎯 Goal</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -369,38 +439,105 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* Row 3: Large Rectangular Panels for Learning Content */}
-      <div className="min-h-0 grid grid-cols-2 gap-4">
-        {/* Family Management Panel - Larger Rectangle */}
-        <div className="bg-white border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Family Overview</h3>
-            <span className="text-sm text-muted-foreground">{children.length} children</span>
+      {/* Row 3: Large Rectangular Panels */}
+      <div className="min-h-0 grid grid-cols-3 gap-4">
+        {/* Family Management Panel - Compact */}
+        <div className="bg-white border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-semibold text-foreground">Family Overview</h3>
+            <span className="text-xs text-muted-foreground">{children.length} kids</span>
           </div>
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+          <div className="space-y-2 max-h-[280px] overflow-y-auto">
             {childrenLoading ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
             ) : children.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No children yet</p>
+              <div className="text-center py-6">
+                <Users className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">No children yet</p>
               </div>
             ) : (
               children.map((child) => (
-                <div key={child.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">😊</div>
+                <div key={child.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">😊</div>
                     <div>
-                      <div className="font-medium">{child.name}</div>
-                      <div className="text-sm text-muted-foreground">{child.age} years old</div>
+                      <div className="text-sm font-medium">{child.name}</div>
+                      <div className="text-xs text-muted-foreground">Level {child.level || 1} • {child.totalPoints} pts</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-primary">{child.totalPoints} pts</div>
-                    <div className="text-xs text-muted-foreground">Total earned</div>
+                    <div className="text-xs font-semibold text-primary">{child.experiencePoints || 0} XP</div>
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Task Management Panel - New */}
+        <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-semibold text-foreground flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Task Categories
+            </h3>
+            <span className="text-xs text-muted-foreground">{choreTemplates.length} tasks</span>
+          </div>
+          <div className="space-y-3 max-h-[280px] overflow-y-auto">
+            {choreTemplates.length === 0 ? (
+              <div className="text-center py-6">
+                <CheckCircle className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">No tasks created yet</p>
+              </div>
+            ) : (
+              (() => {
+                const groupedTasks = choreTemplates.reduce((acc, template) => {
+                  const category = template.category || 'household';
+                  if (!acc[category]) acc[category] = [];
+                  acc[category].push(template);
+                  return acc;
+                }, {} as Record<string, typeof choreTemplates>);
+
+                const categoryConfig = {
+                  exercise: { icon: '🏃‍♂️', label: 'Exercise', color: 'bg-red-100 text-red-800' },
+                  household: { icon: '🧹', label: 'Household', color: 'bg-blue-100 text-blue-800' },
+                  educational: { icon: '📚', label: 'Educational', color: 'bg-purple-100 text-purple-800' },
+                  outdoor: { icon: '🌳', label: 'Outdoor', color: 'bg-green-100 text-green-800' },
+                };
+
+                return Object.entries(groupedTasks).map(([category, tasks]) => {
+                  const config = categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.household;
+                  return (
+                    <div key={category} className="bg-white/80 p-3 rounded-lg border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{config.icon}</span>
+                          <span className="text-sm font-medium">{config.label}</span>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded ${config.color}`}>
+                          {tasks.length} tasks
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {tasks.slice(0, 3).map((task) => (
+                          <div key={task.id} className="flex items-center justify-between text-xs">
+                            <span className="flex items-center gap-1">
+                              <span>{task.icon}</span>
+                              <span className="truncate max-w-[120px]">{task.name}</span>
+                            </span>
+                            <span className="text-primary font-medium">{task.pointValue}pts</span>
+                          </div>
+                        ))}
+                        {tasks.length > 3 && (
+                          <div className="text-xs text-muted-foreground text-center">
+                            +{tasks.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()
             )}
           </div>
         </div>
