@@ -57,6 +57,11 @@ export default function ChildDashboard() {
     enabled: !!child,
   });
 
+  const { data: dailyProgress = [] } = useQuery<any[]>({
+    queryKey: ["/api/children", child?.id, "daily-progress"],
+    enabled: !!child,
+  });
+
   const completeChore = useMutation({
     mutationFn: async (choreId: string) => {
       await apiRequest("PATCH", `/api/assigned-chores/${choreId}/complete`);
@@ -157,6 +162,50 @@ export default function ChildDashboard() {
   const progressPercent = currentGoal ? Math.min((child.totalPoints / currentGoal.reward.pointsCost) * 100, 100) : 0;
   const pointsToGoal = currentGoal ? Math.max(currentGoal.reward.pointsCost - child.totalPoints, 0) : 0;
 
+  // Level progress calculation
+  const currentLevel = child.level || 1;
+  const currentXP = child.experiencePoints || 0;
+  
+  // Level thresholds: Level N requires 100 * (N-1)^2 XP
+  const getLevelThreshold = (level: number) => 100 * Math.pow(level - 1, 2);
+  const currentLevelStart = getLevelThreshold(currentLevel);
+  const nextLevelStart = getLevelThreshold(currentLevel + 1);
+  const levelProgressXP = currentXP - currentLevelStart;
+  const levelProgressNeeded = nextLevelStart - currentLevelStart;
+  const levelProgressPercent = (levelProgressXP / levelProgressNeeded) * 100;
+  const xpToNextLevel = nextLevelStart - currentXP;
+
+  // Daily streak and category progress calculations
+  const today = new Date().toISOString().split('T')[0];
+  const todayProgress = dailyProgress.find(p => p.date === today);
+  
+  // Calculate current streak (consecutive days with completed tasks)
+  const getCurrentStreak = () => {
+    if (!dailyProgress.length) return 0;
+    const sortedProgress = [...dailyProgress].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    let streak = 0;
+    for (const progress of sortedProgress) {
+      if (progress.completedChores > 0) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const currentStreak = getCurrentStreak();
+  
+  // Today's category completion status
+  const todayCategoryProgress = {
+    household: todayProgress?.categoriesCompleted?.household || 0,
+    exercise: todayProgress?.categoriesCompleted?.exercise || 0,
+    educational: todayProgress?.categoriesCompleted?.educational || 0,
+    outdoor: todayProgress?.categoriesCompleted?.outdoor || 0,
+  };
+  
+  const completedCategoriesToday = Object.values(todayCategoryProgress).filter(count => count > 0).length;
+
   return (
     <div className="responsive-container grid h-[calc(100dvh-143px)] grid-rows-[64px_32px_minmax(0,1fr)_120px] gap-2 p-0 overflow-hidden">
       {/* Row 1: Compact Header (64px) */}
@@ -170,6 +219,10 @@ export default function ChildDashboard() {
           </h2>
         </div>
         <div className="flex gap-1">
+          <div className="bg-purple-50 border border-purple-200 rounded px-2 py-1 text-center min-w-[45px]">
+            <div className="text-xs font-bold text-purple-600 leading-none" data-testid="text-level">Lvl {child.level || 1}</div>
+            <div className="text-xs text-purple-700 leading-none">{child.experiencePoints || 0} XP</div>
+          </div>
           <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1 text-center min-w-[45px]">
             <div className="text-xs font-bold text-blue-600 leading-none" data-testid="text-total-points">{child.totalPoints}</div>
             <div className="text-xs text-blue-700 leading-none">Points</div>
@@ -185,26 +238,22 @@ export default function ChildDashboard() {
         </div>
       </div>
 
-      {/* Row 2: Goal Progress (32px) */}
-      <div className="h-[32px] flex items-center justify-between px-2 border border-border rounded overflow-hidden relative">
-        {currentGoal ? (
-          <>
-            <div className="flex items-center gap-1 flex-1 truncate">
-              <span className="text-sm">🎁</span>
-              <span className="text-xs font-medium truncate">{currentGoal.reward.name}</span>
-              {pointsToGoal > 0 && <span className="text-xs text-muted-foreground whitespace-nowrap">({pointsToGoal} to go)</span>}
-            </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{Math.round(progressPercent)}%</span>
-            <div className="absolute inset-x-0 bottom-1 bg-muted rounded-full h-1 mx-2">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all"
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </>
-        ) : (
-          <span className="text-xs text-muted-foreground">No goal selected</span>
-        )}
+      {/* Row 2: Level Progress (32px) */}
+      <div className="h-[32px] flex items-center justify-between px-2 border border-border rounded overflow-hidden relative bg-gradient-to-r from-purple-50 to-blue-50">
+        <div className="flex items-center gap-1 flex-1 truncate">
+          <span className="text-sm">⭐</span>
+          <span className="text-xs font-medium">Level {currentLevel}</span>
+          {xpToNextLevel > 0 && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">({xpToNextLevel} XP to Level {currentLevel + 1})</span>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{Math.round(levelProgressPercent)}%</span>
+        <div className="absolute inset-x-0 bottom-1 bg-muted rounded-full h-1 mx-2">
+          <div 
+            className="bg-gradient-to-r from-purple-500 to-yellow-500 h-full rounded-full transition-all"
+            style={{ width: `${Math.max(0, Math.min(100, levelProgressPercent))}%` }}
+          ></div>
+        </div>
       </div>
 
       {/* Row 3: Activities Hub (scrollable) */}
@@ -348,69 +397,69 @@ export default function ChildDashboard() {
         </div>
       </div>
 
-      {/* Row 4: Rewards & Badges (120px) */}
+      {/* Row 4: Activity Streaks & Categories (120px) */}
       <div className="h-[120px] grid grid-cols-2 gap-2">
-        {/* Goal Selection / Quick Rewards */}
-        <div className="h-full border border-border rounded p-2 overflow-hidden">
-          <div className="text-xs font-medium text-muted-foreground mb-1">
-            {currentGoal ? "Current Goal" : "Select Goal"}
+        {/* Daily Streak Display */}
+        <div className="h-full border border-border rounded p-2 overflow-hidden bg-gradient-to-br from-orange-50 to-red-50">
+          <div className="text-xs font-medium text-muted-foreground mb-1">Daily Streak</div>
+          <div className="text-center mb-2">
+            <div className="text-2xl font-bold text-orange-600" data-testid="text-streak-count">
+              {currentStreak}
+              <span className="text-lg">🔥</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {currentStreak === 0 ? "Start your streak!" : 
+               currentStreak === 1 ? "Day 1 - Keep going!" :
+               currentStreak < 7 ? `${currentStreak} days strong!` :
+               "Amazing streak! 🎉"}
+            </div>
           </div>
-          {!currentGoal ? (
-            <div className="space-y-1">
-              {rewards.slice(0, 2).map((reward) => (
-                <Button
-                  key={reward.id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => selectGoal.mutate(reward.id)}
-                  disabled={selectGoal.isPending}
-                  className="w-full justify-start text-xs h-6 px-2"
-                  aria-ref="e222"
-                >
-                  <span className="mr-1">🎁</span>
-                  <span className="truncate flex-1">{reward.name}</span>
-                  <span className="text-xs">({reward.pointsCost}pt)</span>
-                </Button>
-              ))}
-              {rewards.length > 2 && (
-                <div className="text-xs text-muted-foreground text-center">+{rewards.length - 2} more</div>
-              )}
+          <div className="space-y-1">
+            <div className="text-xs text-center">
+              <span className="text-orange-600 font-medium">Today:</span>
+              <span className="text-muted-foreground ml-1">
+                {completedToday} chore{completedToday !== 1 ? 's' : ''} completed
+              </span>
             </div>
-          ) : (
-            <div className="text-center text-xs text-muted-foreground">
-              Working towards: {currentGoal.reward.name}
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Badges Summary */}
-        <div className="h-full border border-border rounded p-2 overflow-hidden">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Badges ({badges.length}/6)</div>
-          <div className="grid grid-cols-3 gap-1 mb-1">
-            {Array.from({ length: 6 }, (_, index) => {
-              const badge = badges[index];
+        {/* Category Progress Display */}
+        <div className="h-full border border-border rounded p-2 overflow-hidden bg-gradient-to-br from-green-50 to-blue-50">
+          <div className="text-xs font-medium text-muted-foreground mb-1">
+            Categories Today ({completedCategoriesToday}/4)
+          </div>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            {[
+              { key: 'household', icon: '🧹', label: 'House' },
+              { key: 'exercise', icon: '🏃‍♂️', label: 'Exercise' },
+              { key: 'educational', icon: '📚', label: 'Learn' },
+              { key: 'outdoor', icon: '🌳', label: 'Outdoor' }
+            ].map((category) => {
+              const completed = todayCategoryProgress[category.key as keyof typeof todayCategoryProgress] > 0;
               return (
                 <div
-                  key={index}
+                  key={category.key}
                   className={`rounded p-1 text-center h-6 flex items-center justify-center ${
-                    badge ? "bg-yellow-50 border border-yellow-200" : "bg-gray-50 border border-gray-200"
+                    completed ? "bg-green-100 border border-green-300" : "bg-gray-50 border border-gray-200"
                   }`}
-                  data-testid={`badge-slot-${index}`}
+                  data-testid={`category-${category.key}`}
                 >
-                  <div className={`text-xs ${!badge ? "opacity-30" : ""}`}>
-                    {badge ? badge.badgeIcon : "🎯"}
-                  </div>
+                  <span className={`text-xs ${!completed ? "opacity-30" : ""}`}>
+                    {category.icon}
+                  </span>
                 </div>
               );
             })}
           </div>
           <div className="text-center">
-            <span className="text-sm">
-              {thisWeekCompleted >= 10 ? "🏆" : thisWeekCompleted >= 5 ? "🌟" : "💪"}
-            </span>
-            <span className="text-xs text-muted-foreground ml-1">
-              {thisWeekCompleted >= 10 ? "Amazing!" : thisWeekCompleted >= 5 ? "Great!" : "Keep going!"}
-            </span>
+            <div className="text-xs text-muted-foreground">
+              {completedCategoriesToday === 0 ? "Complete different task types!" :
+               completedCategoriesToday === 1 ? "Great start! Try other categories" :
+               completedCategoriesToday === 2 ? "Bonus points unlocked! 🎉" :
+               completedCategoriesToday === 3 ? "Super bonus! One more! 🌟" :
+               "MAXIMUM BONUS! All categories! 🏆"}
+            </div>
           </div>
         </div>
       </div>
