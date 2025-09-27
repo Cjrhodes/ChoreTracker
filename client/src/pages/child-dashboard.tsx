@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award } from "lucide-react";
-import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, Quiz, QuizAttempt } from "@shared/schema";
+import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, QuizAttempt } from "@shared/schema";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -52,7 +52,7 @@ export default function ChildDashboard() {
     enabled: !!child,
   });
 
-  const { data: activeQuiz } = useQuery<Quiz>({
+  const { data: activeQuiz } = useQuery<any>({
     queryKey: ["/api/quizzes", "active", child?.id],
     enabled: !!child,
   });
@@ -102,11 +102,12 @@ export default function ChildDashboard() {
   });
 
   const submitQuizAnswer = useMutation({
-    mutationFn: async ({ quizId, selectedAnswer }: { quizId: string; selectedAnswer: string }) => {
-      return await apiRequest("POST", `/api/quizzes/${quizId}/submit`, {
+    mutationFn: async ({ quizId, selectedAnswer }: { quizId: string; selectedAnswer: string }): Promise<{ isCorrect: boolean; pointsEarned: number }> => {
+      const response = await apiRequest("POST", `/api/quizzes/${quizId}/submit`, {
         childId: child?.id,
         selectedAnswer,
       });
+      return await response.json();
     },
     onSuccess: (data: { isCorrect: boolean; pointsEarned: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", child?.id] });
@@ -220,7 +221,7 @@ export default function ChildDashboard() {
             </div>
             <div className="text-sm mb-3 text-gray-700">{activeQuiz.content.question}</div>
             <div className="space-y-2">
-              {activeQuiz.content.options?.map((option, index) => (
+              {activeQuiz.content.options?.map((option: string, index: number) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -251,13 +252,15 @@ export default function ChildDashboard() {
               {learningActivities.slice(0, 2).map((activity) => (
                 <div key={activity.id} className="p-2 bg-blue-50 border border-blue-200 rounded">
                   <div className="text-xs font-medium text-blue-900 mb-1">{activity.title}</div>
-                  <div className="text-xs text-blue-700 mb-2">{activity.synopsis}</div>
+                  <div className="text-xs text-blue-700 mb-2">
+                    {(activity.content as any)?.synopsis?.content || "Learning content available"}
+                  </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="text-xs h-6 px-2 border-blue-300">
                       <Play className="w-3 h-3 mr-1" />
                       Start
                     </Button>
-                    {activity.learningLink && (
+                    {(activity.resourceLinks as any) && (
                       <Button size="sm" variant="outline" className="text-xs h-6 px-2 border-blue-300">
                         Learn More
                       </Button>

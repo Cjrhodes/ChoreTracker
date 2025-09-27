@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen } from "lucide-react";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye } from "lucide-react";
 import { useState } from "react";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
@@ -25,6 +25,8 @@ export default function ParentDashboard() {
   const [isChoreDialogOpen, setIsChoreDialogOpen] = useState(false);
   const [isRewardDialogOpen, setIsRewardDialogOpen] = useState(false);
   const [isLearningGoalDialogOpen, setIsLearningGoalDialogOpen] = useState(false);
+  const [isContentViewDialogOpen, setIsContentViewDialogOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
@@ -44,6 +46,31 @@ export default function ParentDashboard() {
   const { data: learningGoals = [] } = useQuery<LearningGoal[]>({
     queryKey: ["/api/learning/goals"],
     enabled: !!user,
+  });
+
+  // Fetch learning activities for all goals
+  const { data: learningActivities = [] } = useQuery<any[]>({
+    queryKey: ["/api/learning-activities", "parent", learningGoals.map(g => g.id)],
+    queryFn: async () => {
+      if (learningGoals.length === 0) return [];
+      
+      const allActivities = [];
+      for (const goal of learningGoals) {
+        try {
+          const response = await fetch(`/api/learning/activities?goalId=${goal.id}`, {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const activities = await response.json();
+            allActivities.push(...activities);
+          }
+        } catch (error) {
+          console.error(`Error fetching activities for goal ${goal.id}:`, error);
+        }
+      }
+      return allActivities;
+    },
+    enabled: !!user && learningGoals.length > 0,
   });
 
   // Get recent activity from all children
@@ -487,22 +514,160 @@ export default function ParentDashboard() {
                   <div className="text-sm text-muted-foreground mb-3">
                     Target: {goal.targetUnits} activities • {goal.pointsPerUnit} pts each
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => generateContent.mutate(goal.id)}
-                    disabled={generateContent.isPending}
-                    className="w-full"
-                    data-testid="button-generate-content"
-                  >
-                    <Brain className="w-4 h-4 mr-2" />
-                    {generateContent.isPending ? "Generating..." : "Generate Content"}
-                  </Button>
+                  {(() => {
+                    const goalActivities = learningActivities.filter(activity => activity.goalId === goal.id);
+                    const hasContent = goalActivities.length > 0;
+                    
+                    return (
+                      <div className="space-y-2">
+                        {hasContent && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedGoal(goal);
+                              setIsContentViewDialogOpen(true);
+                            }}
+                            className="w-full"
+                            data-testid="button-view-content"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Generated Content ({goalActivities.length})
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => generateContent.mutate(goal.id)}
+                          disabled={generateContent.isPending}
+                          className="w-full"
+                          data-testid="button-generate-content"
+                        >
+                          <Brain className="w-4 h-4 mr-2" />
+                          {generateContent.isPending ? "Generating..." : hasContent ? "Generate More Content" : "Generate Content"}
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* Content Viewing Dialog */}
+      <Dialog open={isContentViewDialogOpen} onOpenChange={setIsContentViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5" />
+              Generated Content: {selectedGoal?.subject}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedGoal && (
+            <div className="space-y-4">
+              {(() => {
+                const goalActivities = learningActivities.filter(activity => activity.goalId === selectedGoal.id);
+                
+                return goalActivities.length > 0 ? (
+                  goalActivities.map((activity, index) => (
+                    <div key={activity.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-lg">{activity.title}</h3>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          {activity.type}
+                        </span>
+                      </div>
+                      
+                      {/* Synopsis Content */}
+                      {activity.type === 'synopsis' && activity.content?.synopsis && (
+                        <div className="space-y-3">
+                          <div className="prose prose-sm max-w-none">
+                            <h4 className="text-md font-medium text-gray-900">Learning Synopsis</h4>
+                            <p className="text-gray-700">{activity.content.synopsis.content}</p>
+                            
+                            {activity.content.synopsis.keyPoints && (
+                              <div>
+                                <h5 className="text-sm font-medium text-gray-900 mb-2">Key Learning Points:</h5>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {activity.content.synopsis.keyPoints.map((point: string, i: number) => (
+                                    <li key={i} className="text-sm text-gray-700">{point}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Resource Links */}
+                          {activity.content.resourceLinks && activity.content.resourceLinks.length > 0 && (
+                            <div>
+                              <h5 className="text-sm font-medium text-gray-900 mb-2">Additional Resources:</h5>
+                              <div className="space-y-1">
+                                {activity.content.resourceLinks.map((link: any, i: number) => (
+                                  <a 
+                                    key={i}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-800 underline block"
+                                  >
+                                    {link.title}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Quiz Content */}
+                      {activity.type === 'quiz' && activity.content?.questions && (
+                        <div className="space-y-3">
+                          <h4 className="text-md font-medium text-gray-900">Quiz Questions</h4>
+                          <div className="space-y-4">
+                            {activity.content.questions.map((question: any, i: number) => (
+                              <div key={i} className="border-l-4 border-blue-200 pl-4 py-2">
+                                <p className="font-medium text-sm text-gray-900 mb-2">
+                                  {i + 1}. {question.question}
+                                </p>
+                                <div className="space-y-1">
+                                  {question.choices.map((choice: string, choiceIndex: number) => (
+                                    <div 
+                                      key={choiceIndex}
+                                      className={`text-xs px-2 py-1 rounded ${
+                                        choiceIndex === question.correctIndex 
+                                          ? 'bg-green-100 text-green-800 font-medium' 
+                                          : 'bg-gray-100 text-gray-700'
+                                      }`}
+                                    >
+                                      {String.fromCharCode(65 + choiceIndex)}. {choice}
+                                      {choiceIndex === question.correctIndex && ' ✓'}
+                                    </div>
+                                  ))}
+                                </div>
+                                {question.explanation && (
+                                  <p className="text-xs text-gray-600 mt-2 italic">
+                                    Explanation: {question.explanation}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Brain className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                    <p>No content generated yet for this learning goal.</p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
