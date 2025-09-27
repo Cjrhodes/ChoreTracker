@@ -611,6 +611,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Child-specific learning goal routes (frontend API compatibility)
+  app.get('/api/learning-goals/child/:childId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      // Verify parent owns this child
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child's learning goals" });
+      }
+      
+      const goals = await storage.getLearningGoalsByChild(childId);
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching child's learning goals:", error);
+      res.status(500).json({ message: "Failed to fetch learning goals" });
+    }
+  });
+
+  // Child-specific learning activities route
+  app.get('/api/learning-activities/child/:childId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      // Verify parent owns this child
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child's activities" });
+      }
+      
+      const activities = await storage.getLearningActivitiesByChild(childId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching child's learning activities:", error);
+      res.status(500).json({ message: "Failed to fetch learning activities" });
+    }
+  });
+
+  // Active quiz for child route
+  app.get('/api/quizzes/active/:childId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      // Verify parent owns this child
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child's quizzes" });
+      }
+      
+      const activeQuiz = await storage.getActiveQuizByChild(childId);
+      res.json(activeQuiz);
+    } catch (error) {
+      console.error("Error fetching active quiz:", error);
+      res.status(500).json({ message: "Failed to fetch active quiz" });
+    }
+  });
+
+  // Generate content for learning goal route
+  app.post('/api/learning-goals/:goalId/generate-content', isAuthenticated, async (req: any, res) => {
+    try {
+      const { goalId } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      // Get learning goal and verify ownership
+      const goal = await storage.getLearningGoal(goalId);
+      if (!goal) {
+        return res.status(404).json({ message: "Learning goal not found" });
+      }
+      
+      const child = await storage.getChild(goal.childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to learning goal" });
+      }
+
+      // Generate synopsis and learning links
+      const synopsis = await aiContentService.generateSynopsis(goal.subject, child.age, goal.difficulty);
+      const learningLinks = await aiContentService.generateLearningLinks(goal.subject, child.age);
+      
+      // Create learning activity
+      const activityData = {
+        goalId: goal.id,
+        type: 'synopsis',
+        title: `${goal.subject} Learning Adventure`,
+        content: {
+          synopsis,
+          resourceLinks: learningLinks,
+        },
+        resourceLinks: learningLinks,
+        status: 'new',
+      };
+      
+      const activity = await storage.createLearningActivity(activityData);
+
+      // Generate quiz
+      const quiz = await aiContentService.generateQuiz(goal.subject, child.age, goal.difficulty);
+      const firstQuestion = quiz.questions[0]; // Get the first question from the quiz
+      const quizData = {
+        learningGoalId: goal.id, // This matches the createQuiz method parameter
+        question: firstQuestion.question,
+        options: firstQuestion.choices,
+        correctAnswer: firstQuestion.choices[firstQuestion.correctIndex],
+        pointsReward: goal.pointsPerUnit,
+      };
+      
+      const createdQuiz = await storage.createQuiz(quizData);
+
+      res.json({ 
+        message: "Content generated successfully",
+        activity,
+        quiz: createdQuiz
+      });
+    } catch (error) {
+      console.error("Error generating content:", error);
+      res.status(500).json({ message: "Failed to generate content" });
+    }
+  });
+
+  // Submit quiz answer route
+  app.post('/api/quizzes/:quizId/submit', isAuthenticated, async (req: any, res) => {
+    try {
+      const { quizId } = req.params;
+      const { childId, selectedAnswer } = req.body;
+      const parentId = req.user.claims.sub;
+      
+      // Verify parent owns this child
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access" });
+      }
+      
+      // Get quiz
+      const quiz = await storage.getQuiz(quizId);
+      if (!quiz) {
+        return res.status(404).json({ message: "Quiz not found" });
+      }
+      
+      // Check answer (quiz.content has the actual quiz data)
+      const isCorrect = selectedAnswer === quiz.content.correctAnswer;
+      const pointsEarned = isCorrect ? (quiz.content.pointsReward || 10) : 0;
+      
+      // Create quiz attempt (match schema exactly)
+      const attemptData = {
+        activityId: quizId, // quizId is actually the learning activity ID
+        childId,
+        answers: [selectedAnswer], // Schema expects JSONB array
+        score: isCorrect ? 1 : 0,
+        totalQuestions: 1,
+        passed: isCorrect,
+        pointsAwarded: pointsEarned,
+      };
+      
+      const attempt = await storage.createQuizAttempt(attemptData);
+      
+      // Update child's total points if correct
+      if (isCorrect) {
+        await storage.updateChildPoints(childId, pointsEarned);
+      }
+      
+      res.json({
+        isCorrect,
+        pointsEarned,
+        attempt
+      });
+    } catch (error) {
+      console.error("Error submitting quiz answer:", error);
+      res.status(500).json({ message: "Failed to submit quiz answer" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

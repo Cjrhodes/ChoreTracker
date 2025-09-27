@@ -86,8 +86,15 @@ export interface IStorage {
   getActivitiesByGoal(goalId: string): Promise<LearningActivity[]>;
   getActivity(activityId: string): Promise<LearningActivity | undefined>;
   createActivity(activity: InsertLearningActivity): Promise<LearningActivity>;
+  createLearningActivity(activity: InsertLearningActivity): Promise<LearningActivity>; // Alias for routes compatibility
   updateActivityStatus(activityId: string, status: 'new' | 'in_progress' | 'completed'): Promise<void>;
   getActiveActivitiesByChild(childId: string): Promise<(LearningActivity & { goal: LearningGoal })[]>;
+  getLearningActivitiesByChild(childId: string): Promise<LearningActivity[]>; // For API routes
+
+  // Quiz operations (stored as learning activities with type='quiz')
+  createQuiz(quizData: { learningGoalId: string; question: string; options: string[]; correctAnswer: string; pointsReward: number }): Promise<LearningActivity>;
+  getQuiz(quizId: string): Promise<LearningActivity | undefined>;
+  getActiveQuizByChild(childId: string): Promise<LearningActivity | undefined>;
 
   // Quiz Attempts operations
   getAttemptsByActivity(activityId: string): Promise<QuizAttempt[]>;
@@ -491,6 +498,87 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(quizAttempts.completedAt))
       .limit(1);
     return attempt;
+  }
+
+  // Missing learning activity methods for API compatibility
+  async createLearningActivity(activity: InsertLearningActivity): Promise<LearningActivity> {
+    // Alias to createActivity for API route compatibility
+    return await this.createActivity(activity);
+  }
+
+  async getLearningActivitiesByChild(childId: string): Promise<LearningActivity[]> {
+    return await db
+      .select({
+        id: learningActivities.id,
+        goalId: learningActivities.goalId,
+        type: learningActivities.type,
+        title: learningActivities.title,
+        content: learningActivities.content,
+        resourceLinks: learningActivities.resourceLinks,
+        status: learningActivities.status,
+        createdAt: learningActivities.createdAt,
+      })
+      .from(learningActivities)
+      .innerJoin(learningGoals, eq(learningActivities.goalId, learningGoals.id))
+      .where(eq(learningGoals.childId, childId));
+  }
+
+  // Quiz operations (stored as learning activities with type='quiz')
+  async createQuiz(quizData: { learningGoalId: string; question: string; options: string[]; correctAnswer: string; pointsReward: number }): Promise<LearningActivity> {
+    const quizActivity = {
+      goalId: quizData.learningGoalId,
+      type: 'quiz',
+      title: 'Quiz Activity',
+      content: {
+        question: quizData.question,
+        options: quizData.options,
+        correctAnswer: quizData.correctAnswer,
+        pointsReward: quizData.pointsReward,
+      },
+      status: 'new',
+    };
+    
+    return await this.createActivity(quizActivity);
+  }
+
+  async getQuiz(quizId: string): Promise<LearningActivity | undefined> {
+    const [quiz] = await db
+      .select()
+      .from(learningActivities)
+      .where(
+        and(
+          eq(learningActivities.id, quizId),
+          eq(learningActivities.type, 'quiz')
+        )
+      );
+    return quiz;
+  }
+
+  async getActiveQuizByChild(childId: string): Promise<LearningActivity | undefined> {
+    const [quiz] = await db
+      .select({
+        id: learningActivities.id,
+        goalId: learningActivities.goalId,
+        type: learningActivities.type,
+        title: learningActivities.title,
+        content: learningActivities.content,
+        resourceLinks: learningActivities.resourceLinks,
+        status: learningActivities.status,
+        createdAt: learningActivities.createdAt,
+      })
+      .from(learningActivities)
+      .innerJoin(learningGoals, eq(learningActivities.goalId, learningGoals.id))
+      .where(
+        and(
+          eq(learningGoals.childId, childId),
+          eq(learningGoals.isActive, true),
+          eq(learningActivities.type, 'quiz'),
+          eq(learningActivities.status, 'new')
+        )
+      )
+      .orderBy(desc(learningActivities.createdAt))
+      .limit(1);
+    return quiz;
   }
 }
 

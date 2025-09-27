@@ -209,16 +209,18 @@ export default function ChildDashboard() {
       {/* Row 3: Activities Hub (scrollable) */}
       <div className="min-h-0 overflow-y-auto border border-border rounded p-2">
         {/* Active Quiz Section */}
-        {activeQuiz && (
+        {activeQuiz && activeQuiz.content && (
           <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Brain className="w-4 h-4 text-purple-600" />
               <span className="text-sm font-bold text-purple-800">Learning Quiz!</span>
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">+{activeQuiz.pointsReward} pts</span>
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                +{activeQuiz.content.pointsReward || 10} pts
+              </span>
             </div>
-            <div className="text-sm mb-3 text-gray-700">{activeQuiz.question}</div>
+            <div className="text-sm mb-3 text-gray-700">{activeQuiz.content.question}</div>
             <div className="space-y-2">
-              {activeQuiz.options.map((option, index) => (
+              {activeQuiz.content.options?.map((option, index) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -231,7 +233,9 @@ export default function ChildDashboard() {
                   <span className="mr-2 font-bold">{String.fromCharCode(65 + index)}.</span>
                   {option}
                 </Button>
-              ))}
+              )) || (
+                <div className="text-xs text-muted-foreground">Loading quiz options...</div>
+              )}
             </div>
           </div>
         )}

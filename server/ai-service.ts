@@ -41,6 +41,26 @@ export interface QuizContent {
 
 class AIContentService {
   
+  // Helper function to clean AI response and extract JSON
+  private cleanJsonResponse(text: string): string {
+    // Remove markdown code fences if present
+    let cleaned = text.trim();
+    
+    // Remove opening fence (```json or ```)
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '');
+    }
+    
+    // Remove closing fence
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.replace(/\s*```$/, '');
+    }
+    
+    return cleaned.trim();
+  }
+  
   async generateSynopsis(subject: string, age: number, difficulty: 'easy' | 'medium' | 'hard'): Promise<SynopsisContent> {
     const ageGroup = this.getAgeGroup(age);
     const prompt = `You are an educational content creator. Create an age-appropriate synopsis about "${subject}" for ${ageGroup} (age ${age}).
@@ -71,7 +91,16 @@ Return your response as JSON with this exact structure:
 
       const content = response.content[0];
       if (content.type === 'text') {
-        return JSON.parse(content.text);
+        const cleanedText = this.cleanJsonResponse(content.text);
+        console.log('AI Synopsis Response (cleaned):', cleanedText.substring(0, 200) + '...');
+        try {
+          return JSON.parse(cleanedText);
+        } catch (parseError) {
+          console.error('JSON Parse Error for synopsis:', parseError);
+          console.error('Raw AI Response:', content.text);
+          console.error('Cleaned Response:', cleanedText);
+          throw new Error('AI response is not valid JSON');
+        }
       }
       throw new Error('Unexpected response format');
     } catch (error) {
@@ -118,7 +147,16 @@ Return your response as JSON with this exact structure:
 
       const content = response.content[0];
       if (content.type === 'text') {
-        return JSON.parse(content.text);
+        const cleanedText = this.cleanJsonResponse(content.text);
+        console.log('AI Quiz Response (cleaned):', cleanedText.substring(0, 200) + '...');
+        try {
+          return JSON.parse(cleanedText);
+        } catch (parseError) {
+          console.error('JSON Parse Error for quiz:', parseError);
+          console.error('Raw AI Response:', content.text);
+          console.error('Cleaned Response:', cleanedText);
+          throw new Error('AI response is not valid JSON');
+        }
       }
       throw new Error('Unexpected response format');
     } catch (error) {
@@ -157,7 +195,16 @@ Return your response as JSON array with this structure:
 
       const content = response.content[0];
       if (content.type === 'text') {
-        return JSON.parse(content.text);
+        const cleanedText = this.cleanJsonResponse(content.text);
+        console.log('AI Learning Links Response (cleaned):', cleanedText.substring(0, 200) + '...');
+        try {
+          return JSON.parse(cleanedText);
+        } catch (parseError) {
+          console.error('JSON Parse Error for learning links:', parseError);
+          console.error('Raw AI Response:', content.text);
+          console.error('Cleaned Response:', cleanedText);
+          throw new Error('AI response is not valid JSON');
+        }
       }
       throw new Error('Unexpected response format');
     } catch (error) {
