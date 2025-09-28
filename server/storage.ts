@@ -137,11 +137,12 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (existingUser.length > 0) {
-      // Update existing user with new data
+      // Update existing user with new data, but NEVER change the ID
+      const { id, ...updateData } = userData; // Remove ID from update data
       const [user] = await db
         .update(users)
         .set({
-          ...userData,
+          ...updateData,
           updatedAt: new Date(),
         })
         .where(eq(users.email, userData.email!))
