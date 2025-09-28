@@ -33,6 +33,18 @@ export interface LearningLinks {
   description: string;
 }
 
+export interface ChatMessage {
+  role: 'agent' | 'child';
+  content: string;
+  timestamp: Date;
+}
+
+export interface AgentResponse {
+  message: string;
+  type: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat';
+  actionSuggestion?: string;
+}
+
 export interface QuizContent {
   title: string;
   questions: QuizQuestion[];
@@ -219,6 +231,151 @@ Return your response as JSON array with this structure:
     if (age <= 12) return "middle elementary";
     if (age <= 15) return "middle school";
     return "high school";
+  }
+
+  async chatWithAgent(
+    childMessage: string,
+    childName: string,
+    age: number,
+    currentTasks: any[],
+    learningGoals: any[],
+    totalPoints: number,
+    level: number,
+    conversationHistory: ChatMessage[] = []
+  ): Promise<AgentResponse> {
+    const ageGroup = this.getAgeGroup(age);
+    
+    // Build context about the child's current situation
+    const contextInfo = {
+      pendingTasks: currentTasks.filter(task => !task.completedAt).length,
+      completedToday: currentTasks.filter(task => {
+        if (!task.completedAt) return false;
+        const today = new Date().toISOString().split('T')[0];
+        return new Date(task.completedAt).toISOString().startsWith(today);
+      }).length,
+      activeGoals: learningGoals.length,
+      totalPoints,
+      level
+    };
+
+    // Recent conversation context (last 5 messages)
+    const recentChat = conversationHistory.slice(-5).map(msg => 
+      `${msg.role}: ${msg.content}`
+    ).join('\n');
+
+    const agentPersona = `You are ChoreChamp Agent, a friendly AI companion for ${childName}, a ${age}-year-old. 
+
+YOUR PERSONALITY:
+- Encouraging but never patronizing
+- Uses language that feels natural for tweens (ages 10-15)
+- Celebrates wins without being over-the-top
+- Respects their growing independence
+- Motivational but not preachy
+- Sometimes uses light humor or emojis (sparingly)
+- Treats them like the capable person they're becoming
+
+CURRENT CONTEXT:
+- ${childName} has ${contextInfo.pendingTasks} pending tasks
+- Completed ${contextInfo.completedToday} tasks today  
+- Has ${contextInfo.activeGoals} learning goals active
+- Currently at Level ${contextInfo.level} with ${contextInfo.totalPoints} total points
+
+CONVERSATION STYLE:
+- Keep responses conversational and brief (1-3 sentences usually)
+- Ask questions to engage them
+- Give specific encouragement about their progress
+- Suggest next steps when appropriate
+- Be genuinely interested in what they're saying
+
+AVOID:
+- Talking down to them
+- Being overly enthusiastic or fake
+- Long lectures or advice dumps
+- Treating them like a little kid`;
+
+    const prompt = `Recent conversation:
+${recentChat}
+
+${childName} just said: "${childMessage}"
+
+Respond as ChoreChamp Agent. Keep it natural and engaging.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+        system: agentPersona
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        // Determine response type based on content
+        let responseType: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat' = 'general_chat';
+        const lowerMessage = content.text.toLowerCase();
+        
+        if (lowerMessage.includes('task') || lowerMessage.includes('chore') || lowerMessage.includes('remember')) {
+          responseType = 'reminder';
+        } else if (lowerMessage.includes('great') || lowerMessage.includes('awesome') || lowerMessage.includes('nice')) {
+          responseType = 'encouragement';
+        } else if (lowerMessage.includes('goal') || lowerMessage.includes('learn') || lowerMessage.includes('study')) {
+          responseType = 'goal_coaching';
+        }
+
+        return {
+          message: content.text,
+          type: responseType,
+          actionSuggestion: contextInfo.pendingTasks > 0 ? 'Check out your pending tasks!' : undefined
+        };
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error in agent chat:', error);
+      // Fallback response that's still in character
+      return {
+        message: "Hey there! I'm having a little tech trouble right now, but I'm still here for you. What's up?",
+        type: 'general_chat'
+      };
+    }
+  }
+
+  async generateReminder(
+    childName: string,
+    age: number,
+    pendingTasks: any[]
+  ): Promise<string> {
+    const ageGroup = this.getAgeGroup(age);
+    
+    const taskList = pendingTasks.map(task => 
+      `- ${task.choreTemplate.name} (${task.choreTemplate.pointValue} points)`
+    ).join('\n');
+
+    const prompt = `You are ChoreChamp Agent sending a friendly reminder to ${childName}, a ${age}-year-old.
+
+PENDING TASKS:
+${taskList}
+
+Send a brief, encouraging reminder that feels natural for a tween. Be motivational but not pushy. Maybe mention the points they can earn or their progress.
+
+Keep it to 1-2 sentences max.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 150,
+        messages: [{ role: 'user', content: prompt }],
+        system: "You are a friendly AI agent for tweens. Keep reminders brief and encouraging."
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        return content.text;
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error generating reminder:', error);
+      return `Hey ${childName}! You've got ${pendingTasks.length} tasks waiting for you. Ready to earn some points? 💪`;
+    }
   }
 }
 
