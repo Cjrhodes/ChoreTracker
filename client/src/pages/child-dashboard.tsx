@@ -62,6 +62,11 @@ export default function ChildDashboard() {
     enabled: !!child,
   });
 
+  const { data: availableTasks = [] } = useQuery<ChoreTemplate[]>({
+    queryKey: ["/api/children", child?.id, "available-tasks"],
+    enabled: !!child,
+  });
+
   const completeChore = useMutation({
     mutationFn: async (choreId: string) => {
       await apiRequest("PATCH", `/api/assigned-chores/${choreId}/complete`);
@@ -128,6 +133,21 @@ export default function ChildDashboard() {
           description: "That's not quite right, but don't give up!",
         });
       }
+    },
+  });
+
+  const selfAssignTask = useMutation({
+    mutationFn: async (choreTemplateId: string) => {
+      await apiRequest("POST", `/api/children/${child?.id}/self-assign`, {
+        choreTemplateId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", child?.id, "chores"] });
+      toast({
+        title: "Task assigned! 🎯",
+        description: "You can now complete this task to earn points!",
+      });
     },
   });
 
@@ -351,12 +371,55 @@ export default function ChildDashboard() {
           </div>
         )}
 
-        {/* Chores Section */}
+        {/* Available Tasks Section */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-blue-800">Choose New Tasks ({availableTasks.length})</span>
+          </div>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {availableTasks.length === 0 ? (
+              <div className="text-center py-4 text-xs text-muted-foreground">
+                <Target className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                No tasks available to assign
+              </div>
+            ) : (
+              availableTasks.slice(0, 4).map((task) => (
+                <div key={task.id} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sm">{task.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">{task.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{task.description}</div>
+                    </div>
+                    <div className="text-xs text-blue-600 whitespace-nowrap">+{task.pointValue}pt</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => selfAssignTask.mutate(task.id)}
+                    disabled={selfAssignTask.isPending}
+                    data-testid={`button-assign-${task.id}`}
+                    className="text-xs px-2 py-1 h-6 ml-2 bg-blue-100 hover:bg-blue-200 text-blue-800"
+                  >
+                    Pick This!
+                  </Button>
+                </div>
+              ))
+            )}
+            {availableTasks.length > 4 && (
+              <div className="text-center text-xs text-muted-foreground">
+                +{availableTasks.length - 4} more tasks available
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* My Chores Section */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="w-4 h-4 text-orange-600" />
             <span className="text-xs font-medium text-orange-800">
-              Today's Chores ({pendingChores.length} left)
+              My Tasks ({pendingChores.length} to complete)
             </span>
           </div>
           <div className="space-y-1">
@@ -364,7 +427,8 @@ export default function ChildDashboard() {
               <div className="text-xs text-muted-foreground">Loading tasks...</div>
             ) : pendingChores.length === 0 ? (
               <div className="text-center text-xs text-muted-foreground py-4">
-                🎉 All chores done! Amazing work!
+                <Target className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                Pick some tasks above! 📋
               </div>
             ) : (
               pendingChores.slice(0, 3).map((chore) => (
