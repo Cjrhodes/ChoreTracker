@@ -26,6 +26,7 @@ export default function ParentDashboard() {
   const [isRewardDialogOpen, setIsRewardDialogOpen] = useState(false);
   const [isLearningGoalDialogOpen, setIsLearningGoalDialogOpen] = useState(false);
   const [isContentViewDialogOpen, setIsContentViewDialogOpen] = useState(false);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
@@ -163,6 +164,18 @@ export default function ParentDashboard() {
         description: "Please try again later.",
         variant: "destructive"
       });
+    },
+  });
+
+  const approveChore = useMutation({
+    mutationFn: async ({ choreId, pointsAwarded }: { choreId: string; pointsAwarded: number }) => {
+      await apiRequest("PATCH", `/api/assigned-chores/${choreId}/approve`, { pointsAwarded });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recent-chores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      setIsApprovalDialogOpen(false);
+      toast({ title: "Chore Approved! ✅", description: "Points have been awarded to the child." });
     },
   });
 
@@ -430,7 +443,13 @@ export default function ParentDashboard() {
         </Dialog>
 
             {pendingApprovals > 0 && (
-              <Button size="default" variant="outline" className="flex items-center gap-2 bg-orange-50 border-orange-200">
+              <Button 
+                size="default" 
+                variant="outline" 
+                className="flex items-center gap-2 bg-orange-50 border-orange-200"
+                onClick={() => setIsApprovalDialogOpen(true)}
+                data-testid="button-review-approvals"
+              >
                 <Activity className="w-4 h-4" />
                 Review Approvals ({pendingApprovals})
               </Button>
@@ -803,6 +822,63 @@ export default function ParentDashboard() {
               })()}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval Dialog */}
+      <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              Review Completed Chores
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {recentChores
+              .filter(chore => chore.completedAt && !chore.approvedAt)
+              .map((chore) => (
+                <div key={chore.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{chore.choreTemplate.icon}</span>
+                      <div>
+                        <h3 className="font-medium">{chore.choreTemplate.name}</h3>
+                        <p className="text-sm text-muted-foreground">{chore.choreTemplate.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">Completed by:</div>
+                      <div className="text-xs text-muted-foreground">
+                        {children.find(c => c.id === chore.childId)?.name || 'Unknown'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Completed: {chore.completedAt ? new Date(chore.completedAt).toLocaleString() : 'Unknown'}
+                    </div>
+                    <Button
+                      onClick={() => approveChore.mutate({ 
+                        choreId: chore.id, 
+                        pointsAwarded: chore.choreTemplate.pointValue 
+                      })}
+                      disabled={approveChore.isPending}
+                      className="bg-green-100 hover:bg-green-200 text-green-800"
+                      data-testid={`button-approve-${chore.id}`}
+                    >
+                      {approveChore.isPending ? "Approving..." : `Approve (+${chore.choreTemplate.pointValue} pts)`}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            {recentChores.filter(chore => chore.completedAt && !chore.approvedAt).length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No chores pending approval</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
