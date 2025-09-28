@@ -1,19 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award } from "lucide-react";
+import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award, MessageCircle, Send } from "lucide-react";
 import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, QuizAttempt } from "@shared/schema";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
 
+interface ChatMessage {
+  role: 'agent' | 'child';
+  content: string;
+  timestamp: string;
+  type?: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat';
+}
+
 export default function ChildDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { data: children } = useQuery<Child[]>({
     queryKey: ["/api/children"],
@@ -66,6 +84,98 @@ export default function ChildDashboard() {
     queryKey: ["/api/children", child?.id, "available-tasks"],
     enabled: !!child,
   });
+
+  // WebSocket connection effect
+  useEffect(() => {
+    if (!child?.id) return;
+
+    // Create WebSocket connection
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setIsConnected(true);
+      
+      // Authenticate with child ID
+      ws.send(JSON.stringify({
+        type: 'auth',
+        childId: child.id
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        
+        if (message.type === 'agent_message') {
+          const newMessage: ChatMessage = {
+            role: 'agent',
+            content: message.content,
+            timestamp: message.timestamp,
+            type: message.messageType
+          };
+          
+          setChatMessages(prev => [...prev, newMessage]);
+          
+          // Auto-open chat for important messages like reminders
+          if (message.messageType === 'reminder') {
+            setIsChatOpen(true);
+            toast({
+              title: "Message from your ChoreChamp Agent! 🤖",
+              description: message.content.substring(0, 50) + "...",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setIsConnected(false);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsConnected(false);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [child?.id]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Send message to AI agent
+  const sendMessage = () => {
+    if (!currentMessage.trim() || !wsRef.current || !child?.id) return;
+
+    const userMessage: ChatMessage = {
+      role: 'child',
+      content: currentMessage,
+      timestamp: new Date().toISOString()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+
+    // Send to WebSocket
+    wsRef.current.send(JSON.stringify({
+      type: 'chat',
+      childId: child.id,
+      message: currentMessage
+    }));
+
+    setCurrentMessage('');
+  };
 
   const completeChore = useMutation({
     mutationFn: async (choreId: string) => {
@@ -527,6 +637,105 @@ export default function ChildDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Floating Chat Button */}
+      <Button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 shadow-lg z-50"
+        data-testid="button-open-chat"
+      >
+        <MessageCircle className="w-6 h-6" />
+        {!isConnected && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+        )}
+      </Button>
+
+      {/* Chat Modal */}
+      <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <DialogContent className="max-w-md h-[500px] flex flex-col p-0">
+          <DialogHeader className="px-4 py-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+                🤖
+              </div>
+              <div>
+                <div className="text-sm font-bold">ChoreChamp Agent</div>
+                <div className="text-xs text-muted-foreground">
+                  {isConnected ? "Online and ready to chat!" : "Connecting..."}
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" data-testid="chat-messages">
+            {chatMessages.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">
+                <div className="text-4xl mb-2">👋</div>
+                <p>Start chatting with your ChoreChamp Agent!</p>
+                <p className="text-xs mt-1">Ask about your tasks, goals, or just say hi!</p>
+              </div>
+            )}
+            
+            {chatMessages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'child' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                    message.role === 'child'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                  data-testid={`message-${message.role}-${index}`}
+                >
+                  <div className="text-sm">{message.content}</div>
+                  <div
+                    className={`text-xs mt-1 opacity-70 ${
+                      message.role === 'child' ? 'text-blue-100' : 'text-gray-500'
+                    }`}
+                  >
+                    {new Date(message.timestamp).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Message Input */}
+          <div className="p-4 border-t bg-gray-50">
+            <div className="flex gap-2">
+              <Input
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                placeholder="Type your message..."
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                disabled={!isConnected}
+                className="flex-1"
+                data-testid="input-chat-message"
+              />
+              <Button 
+                onClick={sendMessage}
+                disabled={!currentMessage.trim() || !isConnected}
+                className="bg-blue-500 hover:bg-blue-600"
+                data-testid="button-send-message"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+            {!isConnected && (
+              <div className="text-xs text-red-500 mt-1">
+                Reconnecting to chat...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
