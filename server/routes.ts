@@ -960,6 +960,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Store reference to reminder function for future use
   (httpServer as any).sendReminderToChild = sendReminderToChild;
+
+  // Proactive reminder system
+  const checkAndSendReminders = async () => {
+    try {
+      console.log('Checking for children who need reminders...');
+      
+      // Get all children and their pending tasks
+      const allChildren = await storage.getAllChildren();
+      
+      for (const child of allChildren) {
+        // Get pending tasks for this child
+        const pendingTasks = await storage.getAssignedChoresByChild(child.id);
+        const uncompletedTasks = pendingTasks.filter(task => !task.completedAt);
+        
+        if (uncompletedTasks.length > 0) {
+          // Check if it's been a while since last activity (simple logic for now)
+          const lastTaskTime = pendingTasks
+            .filter(task => task.completedAt)
+            .map(task => new Date(task.completedAt!).getTime())
+            .sort((a, b) => b - a)[0];
+          
+          const shouldSendReminder = !lastTaskTime || 
+            (Date.now() - lastTaskTime > 2 * 60 * 60 * 1000); // 2 hours since last activity
+          
+          if (shouldSendReminder) {
+            // Generate and send reminder
+            const reminderMessage = await aiContentService.generateReminder(
+              child.name,
+              child.age,
+              uncompletedTasks
+            );
+            
+            await sendReminderToChild(child.id, reminderMessage);
+            console.log(`Sent reminder to ${child.name}: ${reminderMessage}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in reminder system:', error);
+    }
+  };
+
+  // Start reminder system (check every 30 minutes)
+  const reminderInterval = setInterval(checkAndSendReminders, 30 * 60 * 1000);
+  
+  // Also check once when server starts (after a short delay)
+  setTimeout(checkAndSendReminders, 10000);
+
+  // API endpoint to manually trigger reminders (for testing)
+  app.post('/api/send-reminders', isAuthenticated, async (req: any, res) => {
+    try {
+      await checkAndSendReminders();
+      res.json({ message: "Reminders sent successfully" });
+    } catch (error) {
+      console.error("Error sending reminders:", error);
+      res.status(500).json({ message: "Failed to send reminders" });
+    }
+  });
+
+  // Cleanup on server shutdown
+  process.on('SIGTERM', () => {
+    clearInterval(reminderInterval);
+  });
   
   return httpServer;
 }
