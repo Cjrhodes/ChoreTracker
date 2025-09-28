@@ -139,6 +139,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Available tasks for children to self-assign
+  app.get('/api/children/:childId/available-tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      
+      // First, verify the child exists and get their parent
+      const child = await storage.getChild(childId);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Get all chore templates from the child's parent
+      const templates = await storage.getChoreTemplatesByParent(child.parentId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching available tasks:", error);
+      res.status(500).json({ message: "Failed to fetch available tasks" });
+    }
+  });
+
   // Assigned chores routes
   app.get('/api/children/:childId/chores', isAuthenticated, async (req: any, res) => {
     try {
@@ -170,6 +190,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(500).json({ message: "Failed to assign chore" });
+    }
+  });
+
+  // Self-assignment endpoint for children
+  app.post('/api/children/:childId/self-assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      const { choreTemplateId } = req.body;
+      
+      if (!choreTemplateId) {
+        return res.status(400).json({ message: "choreTemplateId is required" });
+      }
+      
+      // Verify child exists
+      const child = await storage.getChild(childId);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Verify the chore template exists and belongs to the child's parent
+      const template = await storage.getChoreTemplate(choreTemplateId);
+      if (!template) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      if (template.parentId !== child.parentId) {
+        return res.status(403).json({ message: "Not authorized to assign this task" });
+      }
+      
+      // Create the assigned chore
+      const today = new Date().toISOString().split('T')[0];
+      const choreData = insertAssignedChoreSchema.parse({
+        childId,
+        choreTemplateId,
+        assignedDate: today
+      });
+      
+      const chore = await storage.assignChore(choreData);
+      res.status(201).json(chore);
+    } catch (error) {
+      console.error("Error self-assigning chore:", error);
+      res.status(500).json({ message: "Failed to self-assign task" });
     }
   });
 
