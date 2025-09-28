@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import { 
@@ -12,7 +13,7 @@ import {
   insertLearningActivitySchema,
   insertQuizAttemptSchema
 } from "@shared/schema";
-import { aiContentService } from "./ai-service";
+import { aiContentService, type ChatMessage } from "./ai-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -857,5 +858,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Setup WebSocket server for AI agent chat
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store active connections by childId
+  const childConnections = new Map<string, WebSocket>();
+  
+  wss.on('connection', (ws, req) => {
+    console.log('WebSocket connection established');
+    
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        if (message.type === 'auth') {
+          // Child authenticating their connection
+          const { childId } = message;
+          childConnections.set(childId, ws);
+          console.log(`Child ${childId} connected via WebSocket`);
+          
+          // Send welcome message
+          ws.send(JSON.stringify({
+            type: 'agent_message',
+            content: `Hey! I'm your ChoreChamp Agent. What's going on today? 😊`,
+            timestamp: new Date().toISOString()
+          }));
+          
+        } else if (message.type === 'chat') {
+          // Child sending a chat message to the AI agent
+          const { childId, message: childMessage } = message;
+          
+          // Get child's context for AI conversation
+          const child = await storage.getChild(childId);
+          if (!child) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              content: 'Child not found'
+            }));
+            return;
+          }
+          
+          // Get current tasks and goals for context
+          const currentTasks = await storage.getAssignedChoresByChild(childId);
+          const learningGoals = await storage.getLearningGoalsByChild(childId);
+          
+          // Get AI response
+          const agentResponse = await aiContentService.chatWithAgent(
+            childMessage,
+            child.name,
+            child.age,
+            currentTasks,
+            learningGoals,
+            child.totalPoints,
+            child.level
+          );
+          
+          // Send AI response back to child
+          ws.send(JSON.stringify({
+            type: 'agent_message',
+            content: agentResponse.message,
+            messageType: agentResponse.type,
+            actionSuggestion: agentResponse.actionSuggestion,
+            timestamp: new Date().toISOString()
+          }));
+        }
+        
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          content: 'Sorry, I had trouble understanding that. Can you try again?'
+        }));
+      }
+    });
+    
+    ws.on('close', () => {
+      // Remove connection when client disconnects
+      for (const [childId, connection] of Array.from(childConnections.entries())) {
+        if (connection === ws) {
+          childConnections.delete(childId);
+          console.log(`Child ${childId} disconnected from WebSocket`);
+          break;
+        }
+      }
+    });
+  });
+  
+  // Function to send reminders to connected children
+  const sendReminderToChild = async (childId: string, reminderMessage: string) => {
+    const ws = childConnections.get(childId);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'agent_message',
+        content: reminderMessage,
+        messageType: 'reminder',
+        timestamp: new Date().toISOString()
+      }));
+    }
+  };
+  
+  // Store reference to reminder function for future use
+  (httpServer as any).sendReminderToChild = sendReminderToChild;
+  
   return httpServer;
 }
