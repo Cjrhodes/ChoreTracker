@@ -11,7 +11,7 @@ export default function Landing() {
               🏆
             </div>
             
-            <h1 className="text-3xl font-bold text-foreground mb-3">
+            <h1 className="text-3xl font-bold mb-3" style={{ color: '#CCDC38' }}>
               Welcome to ChoreChamps!
             </h1>
             
