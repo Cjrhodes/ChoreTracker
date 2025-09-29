@@ -41,7 +41,7 @@ export interface ChatMessage {
 
 export interface AgentResponse {
   message: string;
-  type: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat';
+  type: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat' | 'family_status';
   actionSuggestion?: string;
 }
 
@@ -334,6 +334,119 @@ Respond as ChoreChamp Agent. Keep it natural and engaging.`;
       // Fallback response that's still in character
       return {
         message: "Hey there! I'm having a little tech trouble right now, but I'm still here for you. What's up?",
+        type: 'general_chat'
+      };
+    }
+  }
+
+  async chatWithParent(
+    parentMessage: string,
+    parentName: string,
+    familyContext: {
+      children: Array<{
+        id: string;
+        name: string;
+        age: number;
+        level: number;
+        totalPoints: number;
+      }>;
+      totalPendingTasks: number;
+      tasksCompletedToday: number;
+      activeLearningGoals: number;
+      recentActivity?: string[];
+    },
+    conversationHistory: Array<{ role: string; content: string }> = []
+  ): Promise<AgentResponse> {
+    // Build family status summary
+    const childrenSummary = familyContext.children.map(child => 
+      `${child.name} (${child.age}yo, Level ${child.level}, ${child.totalPoints} points)`
+    ).join(', ');
+
+    // Recent conversation context (last 5 messages)
+    const recentChat = conversationHistory.slice(-5).map(msg => 
+      `${msg.role}: ${msg.content}`
+    ).join('\n');
+
+    const agentPersona = `You are ChoreChamp Agent, an AI companion helping ${parentName || 'this parent'} manage their family's activities and growth.
+
+YOUR PERSONALITY:
+- Professional but friendly and approachable
+- Data-driven and insightful about family progress
+- Supportive of parenting goals
+- Practical and solution-oriented
+- Understands the challenges of family management
+- Respectful of parenting decisions
+
+FAMILY CONTEXT:
+- Children: ${childrenSummary || 'No children yet'}
+- Pending Tasks: ${familyContext.totalPendingTasks}
+- Completed Today: ${familyContext.tasksCompletedToday}
+- Active Learning Goals: ${familyContext.activeLearningGoals}
+
+YOUR CAPABILITIES:
+- Provide insights about children's progress
+- Suggest household organization strategies
+- Offer encouragement and celebrate family wins
+- Give data-driven observations about patterns
+- Help with goal-setting and motivation strategies
+- Answer questions about the ChoreChamps system
+
+CONVERSATION STYLE:
+- Keep responses conversational (2-4 sentences typically)
+- Be specific about family data when relevant
+- Ask clarifying questions when helpful
+- Provide actionable suggestions
+- Acknowledge parenting challenges with empathy
+
+AVOID:
+- Giving medical, legal, or professional advice
+- Being judgmental about parenting choices
+- Overstepping into personal family matters
+- Long explanations unless asked`;
+
+    const prompt = `Recent conversation:
+${recentChat || 'Starting new conversation'}
+
+${parentName || 'Parent'} just said: "${parentMessage}"
+
+Respond as ChoreChamp Agent. Be helpful and conversational.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }],
+        system: agentPersona
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        // Determine response type
+        let responseType: 'reminder' | 'encouragement' | 'goal_coaching' | 'general_chat' | 'family_status' = 'general_chat';
+        const lowerMessage = content.text.toLowerCase();
+        
+        if (lowerMessage.includes('progress') || lowerMessage.includes('status') || lowerMessage.includes('doing')) {
+          responseType = 'family_status';
+        } else if (lowerMessage.includes('task') || lowerMessage.includes('chore') || lowerMessage.includes('remember')) {
+          responseType = 'reminder';
+        } else if (lowerMessage.includes('great') || lowerMessage.includes('awesome') || lowerMessage.includes('congratulations')) {
+          responseType = 'encouragement';
+        } else if (lowerMessage.includes('goal') || lowerMessage.includes('suggest') || lowerMessage.includes('recommend')) {
+          responseType = 'goal_coaching';
+        }
+
+        return {
+          message: content.text,
+          type: responseType as any,
+          actionSuggestion: familyContext.totalPendingTasks > 5 ? 'You have several pending tasks to review' : undefined
+        };
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error in parent agent chat:', error);
+      // Fallback response
+      return {
+        message: "I'm here to help! How can I assist you with managing your family's activities today?",
         type: 'general_chat'
       };
     }

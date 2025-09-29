@@ -12,6 +12,7 @@ import {
   dailyProgress,
   aiMessages,
   aiSuggestions,
+  appMessages,
   type User,
   type UpsertUser,
   type Child,
@@ -38,6 +39,8 @@ import {
   type InsertAiMessage,
   type AiSuggestion,
   type InsertAiSuggestion,
+  type AppMessage,
+  type InsertAppMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -126,10 +129,15 @@ export interface IStorage {
   getCurrentStreak(childId: string): Promise<number>;
   getChoresByCategory(parentId: string, category: string): Promise<ChoreTemplate[]>;
 
-  // AI Chat operations
+  // AI Chat operations (legacy child-only chat)
   getChatHistory(childId: string, limit?: number): Promise<AiMessage[]>;
   addChatMessage(message: InsertAiMessage): Promise<AiMessage>;
   pruneChatHistory(childId: string, keepLastN: number): Promise<void>;
+
+  // Universal App Messages operations (supports both parent and child chat)
+  getAppChatHistory(partyType: 'parent' | 'child', partyId: string, limit?: number): Promise<AppMessage[]>;
+  addAppMessage(message: InsertAppMessage): Promise<AppMessage>;
+  pruneAppChatHistory(partyType: 'parent' | 'child', partyId: string, keepLastN: number): Promise<void>;
 
   // AI Suggestions operations
   getSuggestionsByChild(childId: string, status?: 'new' | 'accepted' | 'dismissed'): Promise<AiSuggestion[]>;
@@ -832,6 +840,51 @@ export class DatabaseStorage implements IStorage {
       await db
         .delete(aiMessages)
         .where(sql`${aiMessages.id} IN ${idsToDelete}`);
+    }
+  }
+
+  // Universal App Messages operations (supports both parent and child chat)
+  async getAppChatHistory(partyType: 'parent' | 'child', partyId: string, limit: number = 50): Promise<AppMessage[]> {
+    return await db
+      .select()
+      .from(appMessages)
+      .where(
+        and(
+          eq(appMessages.partyType, partyType),
+          eq(appMessages.partyId, partyId)
+        )
+      )
+      .orderBy(desc(appMessages.createdAt))
+      .limit(limit);
+  }
+
+  async addAppMessage(message: InsertAppMessage): Promise<AppMessage> {
+    const [result] = await db
+      .insert(appMessages)
+      .values(message)
+      .returning();
+    return result;
+  }
+
+  async pruneAppChatHistory(partyType: 'parent' | 'child', partyId: string, keepLastN: number): Promise<void> {
+    // Delete older messages beyond the limit to prevent infinite growth
+    const messagesToDelete = await db
+      .select({ id: appMessages.id })
+      .from(appMessages)
+      .where(
+        and(
+          eq(appMessages.partyType, partyType),
+          eq(appMessages.partyId, partyId)
+        )
+      )
+      .orderBy(desc(appMessages.createdAt))
+      .offset(keepLastN);
+
+    if (messagesToDelete.length > 0) {
+      const idsToDelete = messagesToDelete.map(m => m.id);
+      await db
+        .delete(appMessages)
+        .where(sql`${appMessages.id} IN ${idsToDelete}`);
     }
   }
 
