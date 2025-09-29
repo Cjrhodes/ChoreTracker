@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import logoUrl from '@assets/generated_images/Simple_minimal_ChoreChamps_logo_67de3a3c.png';
+import logoUrl from '@assets/rockinthemoon_green_checkmark_logo_for_website_circular_backgro_291ed355-3253-487c-a924-e5f7e754b102-removebg-preview_1759167799110.png';
 
 interface InterfaceToggleProps {
   activeInterface: "child" | "parent";
