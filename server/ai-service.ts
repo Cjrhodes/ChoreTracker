@@ -377,6 +377,178 @@ Keep it to 1-2 sentences max.`;
       return `Hey ${childName}! You've got ${pendingTasks.length} tasks waiting for you. Ready to earn some points? 💪`;
     }
   }
+
+  async generateGoalSuggestions(
+    age: number, 
+    interests?: string[], 
+    difficulty: 'easy' | 'medium' | 'hard' = 'medium'
+  ): Promise<Array<{
+    subject: string;
+    rationale: string;
+    suggestedTargetUnits: number;
+    pointsPerUnit: number;
+  }>> {
+    const interestsText = interests?.length ? `Interests: ${interests.join(', ')}` : '';
+    
+    const prompt = `Generate 3 age-appropriate learning goals for a ${age}-year-old tween.
+
+${interestsText}
+Difficulty: ${difficulty}
+
+For each goal, provide:
+- subject: The learning topic/skill
+- rationale: Why this is valuable for their age (1 sentence)
+- suggestedTargetUnits: Number of learning activities to complete (3-8)
+- pointsPerUnit: Points per activity (10-25 based on difficulty)
+
+Focus on: STEM, creative skills, life skills, languages, or hobbies that build confidence and independence.
+
+Return as JSON array.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }],
+        system: "Generate educational suggestions for tweens. Return valid JSON only."
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        const cleanedResponse = this.cleanJsonResponse(content.text);
+        return JSON.parse(cleanedResponse);
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error generating learning goals:', error);
+      // Fallback goals
+      return [
+        {
+          subject: "Basic Coding with Scratch",
+          rationale: "Programming builds logical thinking and creativity.",
+          suggestedTargetUnits: 5,
+          pointsPerUnit: 15
+        }
+      ];
+    }
+  }
+
+  async generateTaskSuggestions(
+    age: number,
+    categories: string[] = ['educational', 'fitness', 'creative'],
+    timeboxMinutes: number = 20
+  ): Promise<Array<{
+    title: string;
+    description: string;
+    category: string;
+    pointValue: number;
+    frequency: string;
+  }>> {
+    const categoriesText = categories.join(', ');
+    
+    const prompt = `Generate 4 engaging tasks for a ${age}-year-old that take about ${timeboxMinutes} minutes each.
+
+Categories: ${categoriesText}
+Age: ${age} years
+
+For each task, provide:
+- title: Clear, actionable task name
+- description: What they'll do (1-2 sentences)
+- category: One of: ${categoriesText}
+- pointValue: Points earned (15-30 based on effort/time)
+- frequency: "daily", "weekly", or "custom"
+
+Make tasks fun, achievable, and age-appropriate. Mix easy wins with slight challenges.
+
+Return as JSON array.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }],
+        system: "Generate task suggestions for tweens. Return valid JSON only."
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        const cleanedResponse = this.cleanJsonResponse(content.text);
+        return JSON.parse(cleanedResponse);
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error generating task suggestions:', error);
+      // Fallback tasks
+      return [
+        {
+          title: "15-Minute Room Cleanup",
+          description: "Organize and tidy your room, focusing on one area at a time.",
+          category: "household",
+          pointValue: 20,
+          frequency: "daily"
+        }
+      ];
+    }
+  }
+
+  async generateExercisePlan(
+    age: number,
+    fitnessLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
+  ): Promise<Array<{
+    title: string;
+    description: string;
+    duration: number;
+    equipment: string;
+    pointValue: number;
+    safetyNotes: string;
+  }>> {
+    const prompt = `Generate 3 safe, fun exercise activities for a ${age}-year-old at ${fitnessLevel} fitness level.
+
+Requirements:
+- No dangerous equipment
+- Age-appropriate movements 
+- Can be done at home or in a safe space
+- Include warm-up guidance
+
+For each exercise, provide:
+- title: Fun, motivating name
+- description: Clear instructions (2-3 sentences)  
+- duration: Minutes (5-20 based on age/level)
+- equipment: "none" or simple items like "towel", "water bottle"
+- pointValue: Points earned (10-25)
+- safetyNotes: Important safety tip (1 sentence)
+
+Return as JSON array.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }],
+        system: "Generate safe exercise suggestions for tweens. Return valid JSON only."
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        const cleanedResponse = this.cleanJsonResponse(content.text);
+        return JSON.parse(cleanedResponse);
+      }
+      throw new Error('Unexpected response format');
+    } catch (error) {
+      console.error('Error generating exercise plan:', error);
+      // Fallback exercises
+      return [
+        {
+          title: "10-Minute Dance Party",
+          description: "Put on your favorite music and dance freely for 10 minutes. Move however feels good!",
+          duration: 10,
+          equipment: "none",
+          pointValue: 15,
+          safetyNotes: "Make sure you have enough space and avoid slippery surfaces."
+        }
+      ];
+    }
+  }
 }
 
 export const aiContentService = new AIContentService();
