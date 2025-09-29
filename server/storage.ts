@@ -10,6 +10,8 @@ import {
   learningActivities,
   quizAttempts,
   dailyProgress,
+  aiMessages,
+  aiSuggestions,
   type User,
   type UpsertUser,
   type Child,
@@ -32,6 +34,10 @@ import {
   type InsertQuizAttempt,
   type DailyProgress,
   type InsertDailyProgress,
+  type AiMessage,
+  type InsertAiMessage,
+  type AiSuggestion,
+  type InsertAiSuggestion,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -119,6 +125,18 @@ export interface IStorage {
   calculateDailyBonus(categoriesCompleted: string[]): number;
   getCurrentStreak(childId: string): Promise<number>;
   getChoresByCategory(parentId: string, category: string): Promise<ChoreTemplate[]>;
+
+  // AI Chat operations
+  getChatHistory(childId: string, limit?: number): Promise<AiMessage[]>;
+  addChatMessage(message: InsertAiMessage): Promise<AiMessage>;
+  pruneChatHistory(childId: string, keepLastN: number): Promise<void>;
+
+  // AI Suggestions operations
+  getSuggestionsByChild(childId: string, status?: 'new' | 'accepted' | 'dismissed'): Promise<AiSuggestion[]>;
+  createSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
+  updateSuggestionStatus(suggestionId: string, status: 'accepted' | 'dismissed'): Promise<void>;
+  acceptSuggestion(suggestionId: string): Promise<AiSuggestion>;
+  dismissSuggestion(suggestionId: string): Promise<AiSuggestion>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -779,6 +797,92 @@ export class DatabaseStorage implements IStorage {
           eq(choreTemplates.category, category)
         )
       );
+  }
+
+  // AI Chat operations
+  async getChatHistory(childId: string, limit: number = 50): Promise<AiMessage[]> {
+    return await db
+      .select()
+      .from(aiMessages)
+      .where(eq(aiMessages.childId, childId))
+      .orderBy(desc(aiMessages.createdAt))
+      .limit(limit);
+  }
+
+  async addChatMessage(message: InsertAiMessage): Promise<AiMessage> {
+    const [result] = await db
+      .insert(aiMessages)
+      .values(message)
+      .returning();
+    return result;
+  }
+
+  async pruneChatHistory(childId: string, keepLastN: number): Promise<void> {
+    // Delete older messages beyond the limit to prevent infinite growth
+    const messagesToDelete = await db
+      .select({ id: aiMessages.id })
+      .from(aiMessages)
+      .where(eq(aiMessages.childId, childId))
+      .orderBy(desc(aiMessages.createdAt))
+      .offset(keepLastN);
+
+    if (messagesToDelete.length > 0) {
+      const idsToDelete = messagesToDelete.map(m => m.id);
+      await db
+        .delete(aiMessages)
+        .where(sql`${aiMessages.id} IN ${idsToDelete}`);
+    }
+  }
+
+  // AI Suggestions operations
+  async getSuggestionsByChild(childId: string, status?: 'new' | 'accepted' | 'dismissed'): Promise<AiSuggestion[]> {
+    const whereCondition = status
+      ? and(eq(aiSuggestions.childId, childId), eq(aiSuggestions.status, status))
+      : eq(aiSuggestions.childId, childId);
+    
+    return await db
+      .select()
+      .from(aiSuggestions)
+      .where(whereCondition)
+      .orderBy(desc(aiSuggestions.createdAt));
+  }
+
+  async createSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion> {
+    const [result] = await db
+      .insert(aiSuggestions)
+      .values(suggestion)
+      .returning();
+    return result;
+  }
+
+  async updateSuggestionStatus(suggestionId: string, status: 'accepted' | 'dismissed'): Promise<void> {
+    const updateData: any = { status };
+    if (status === 'accepted') {
+      updateData.acceptedAt = new Date();
+    }
+    
+    await db
+      .update(aiSuggestions)
+      .set(updateData)
+      .where(eq(aiSuggestions.id, suggestionId));
+  }
+
+  async acceptSuggestion(suggestionId: string): Promise<AiSuggestion> {
+    await this.updateSuggestionStatus(suggestionId, 'accepted');
+    const [result] = await db
+      .select()
+      .from(aiSuggestions)
+      .where(eq(aiSuggestions.id, suggestionId));
+    return result;
+  }
+
+  async dismissSuggestion(suggestionId: string): Promise<AiSuggestion> {
+    await this.updateSuggestionStatus(suggestionId, 'dismissed');
+    const [result] = await db
+      .select()
+      .from(aiSuggestions)
+      .where(eq(aiSuggestions.id, suggestionId));
+    return result;
   }
 }
 

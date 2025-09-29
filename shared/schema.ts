@@ -149,6 +149,27 @@ export const dailyProgress = pgTable("daily_progress", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// AI chat messages for persistent conversation history
+export const aiMessages = pgTable("ai_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  role: varchar("role").notNull(), // 'agent' or 'child'
+  type: varchar("type").notNull(), // 'reminder', 'encouragement', 'goal_coaching', 'general_chat'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// AI-generated suggestions that can be accepted/dismissed
+export const aiSuggestions = pgTable("ai_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  kind: varchar("kind").notNull(), // 'learning_goal', 'task', 'exercise'
+  payload: jsonb("payload").notNull(), // Normalized JSON structure for the suggestion
+  status: varchar("status").notNull().default("new"), // 'new', 'accepted', 'dismissed'
+  createdAt: timestamp("created_at").defaultNow(),
+  acceptedAt: timestamp("accepted_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   children: many(children),
@@ -168,6 +189,8 @@ export const childrenRelations = relations(children, ({ one, many }) => ({
   learningGoals: many(learningGoals),
   quizAttempts: many(quizAttempts),
   dailyProgress: many(dailyProgress),
+  aiMessages: many(aiMessages),
+  aiSuggestions: many(aiSuggestions),
 }));
 
 export const choreTemplatesRelations = relations(choreTemplates, ({ one, many }) => ({
@@ -257,6 +280,20 @@ export const dailyProgressRelations = relations(dailyProgress, ({ one }) => ({
   }),
 }));
 
+export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
+  child: one(children, {
+    fields: [aiMessages.childId],
+    references: [children.id],
+  }),
+}));
+
+export const aiSuggestionsRelations = relations(aiSuggestions, ({ one }) => ({
+  child: one(children, {
+    fields: [aiSuggestions.childId],
+    references: [children.id],
+  }),
+}));
+
 // Insert schemas
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
@@ -320,6 +357,23 @@ export const insertDailyProgressSchema = createInsertSchema(dailyProgress).omit(
   createdAt: true,
 });
 
+export const insertAiMessageSchema = createInsertSchema(aiMessages).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  role: z.enum(['agent', 'child']),
+  type: z.enum(['reminder', 'encouragement', 'goal_coaching', 'general_chat']),
+});
+
+export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+}).extend({
+  kind: z.enum(['learning_goal', 'task', 'exercise']),
+  status: z.enum(['new', 'accepted', 'dismissed']).optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -343,3 +397,7 @@ export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
 export type DailyProgress = typeof dailyProgress.$inferSelect;
 export type InsertDailyProgress = z.infer<typeof insertDailyProgressSchema>;
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type InsertAiMessage = z.infer<typeof insertAiMessageSchema>;
+export type AiSuggestion = typeof aiSuggestions.$inferSelect;
+export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
