@@ -857,6 +857,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Suggestions API Routes
+  app.post('/api/ai/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId, kinds, params = {} } = req.body;
+      
+      // Verify child belongs to authenticated user
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== req.user.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      const suggestions = [];
+
+      for (const kind of kinds) {
+        let generatedContent;
+        
+        if (kind === 'learning_goal') {
+          generatedContent = await aiContentService.generateGoalSuggestions(
+            child.age,
+            params.interests,
+            params.difficulty || 'medium'
+          );
+        } else if (kind === 'task') {
+          generatedContent = await aiContentService.generateTaskSuggestions(
+            child.age,
+            params.categories || ['educational', 'fitness', 'creative'],
+            params.timeboxMinutes || 20
+          );
+        } else if (kind === 'exercise') {
+          generatedContent = await aiContentService.generateExercisePlan(
+            child.age,
+            params.fitnessLevel || 'beginner'
+          );
+        }
+
+        // Store each suggestion in database
+        for (const content of generatedContent || []) {
+          const suggestion = await storage.createSuggestion({
+            childId,
+            kind,
+            payload: content,
+            status: 'new'
+          });
+          suggestions.push(suggestion);
+        }
+      }
+
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating AI suggestions:", error);
+      res.status(500).json({ message: "Failed to generate suggestions" });
+    }
+  });
+
+  app.get('/api/ai/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId, status } = req.query;
+      
+      // Verify child belongs to authenticated user
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== req.user.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      const suggestions = await storage.getSuggestionsByChild(childId, status);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error fetching AI suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch suggestions" });
+    }
+  });
+
+  app.post('/api/ai/suggestions/:id/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get suggestion and verify access
+      const suggestions = await storage.getSuggestionsByChild('', undefined); // Get all to find by ID
+      const suggestion = suggestions.find(s => s.id === id);
+      
+      if (!suggestion) {
+        res.status(404).json({ message: "Suggestion not found" });
+        return;
+      }
+
+      const child = await storage.getChild(suggestion.childId);
+      if (!child || child.parentId !== req.user.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      // Accept the suggestion
+      await storage.acceptSuggestion(id);
+
+      // Materialize the suggestion based on its kind
+      if (suggestion.kind === 'learning_goal') {
+        const payload = suggestion.payload as any;
+        await storage.createLearningGoal({
+          childId: suggestion.childId,
+          parentId: req.user.id,
+          subject: payload.subject,
+          difficulty: 'medium',
+          targetUnits: payload.suggestedTargetUnits,
+          pointsPerUnit: payload.pointsPerUnit,
+          isActive: true
+        });
+      } else if (suggestion.kind === 'task' || suggestion.kind === 'exercise') {
+        const payload = suggestion.payload as any;
+        // Create chore template
+        const template = await storage.createChoreTemplate({
+          parentId: req.user.id,
+          name: payload.title,
+          description: payload.description,
+          pointValue: payload.pointValue,
+          category: payload.category || (suggestion.kind === 'exercise' ? 'exercise' : 'educational'),
+          frequency: payload.frequency || 'custom'
+        });
+        
+        // Assign to child
+        await storage.assignChore({
+          childId: suggestion.childId,
+          choreTemplateId: template.id,
+          assignedDate: new Date().toISOString().split('T')[0]
+        });
+      }
+
+      res.json({ message: "Suggestion accepted and applied" });
+    } catch (error) {
+      console.error("Error accepting AI suggestion:", error);
+      res.status(500).json({ message: "Failed to accept suggestion" });
+    }
+  });
+
+  app.post('/api/ai/suggestions/:id/dismiss', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Similar verification as accept
+      const suggestions = await storage.getSuggestionsByChild('', undefined);
+      const suggestion = suggestions.find(s => s.id === id);
+      
+      if (!suggestion) {
+        res.status(404).json({ message: "Suggestion not found" });
+        return;
+      }
+
+      const child = await storage.getChild(suggestion.childId);
+      if (!child || child.parentId !== req.user.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      await storage.dismissSuggestion(id);
+      res.json({ message: "Suggestion dismissed" });
+    } catch (error) {
+      console.error("Error dismissing AI suggestion:", error);
+      res.status(500).json({ message: "Failed to dismiss suggestion" });
+    }
+  });
+
+  // Chat History API Routes
+  app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId, limit = 50 } = req.query;
+      
+      // Verify child belongs to authenticated user
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== req.user.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      const messages = await storage.getChatHistory(childId, parseInt(limit));
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      res.status(500).json({ message: "Failed to fetch chat history" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Setup WebSocket server for AI agent chat
@@ -898,6 +1080,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
             return;
           }
+
+          // Persist child's message to database
+          await storage.addChatMessage({
+            childId,
+            role: 'child',
+            type: 'general_chat',
+            content: childMessage
+          });
           
           // Get current tasks and goals for context
           const currentTasks = await storage.getAssignedChoresByChild(childId);
@@ -913,6 +1103,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             child.totalPoints,
             child.level
           );
+
+          // Persist agent's response to database
+          await storage.addChatMessage({
+            childId,
+            role: 'agent',
+            type: agentResponse.type,
+            content: agentResponse.message
+          });
+
+          // Prune old messages to prevent database bloat (keep last 200 messages)
+          await storage.pruneChatHistory(childId, 200);
           
           // Send AI response back to child
           ws.send(JSON.stringify({
