@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award, MessageCircle, Send } from "lucide-react";
 import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, QuizAttempt } from "@shared/schema";
+import { ChatWidget } from "@/components/ui/chat-widget";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -736,6 +737,14 @@ export default function ChildDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Always-available ChatWidget in bottom-right corner */}
+      {child && (
+        <ChatWidget 
+          childId={child.id} 
+          childName={child.name}
+        />
+      )}
     </div>
   );
 }
