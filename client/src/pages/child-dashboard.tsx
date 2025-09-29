@@ -12,6 +12,7 @@ import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSele
 import { ChatWidget } from "@/components/ui/chat-widget";
 import { LearningGoalSuggestions } from "@/components/child/learning-goal-suggestions";
 import { TaskSuggestions } from "@/components/child/task-suggestions";
+import { ExerciseSuggestions } from "@/components/child/exercise-suggestions";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -495,6 +496,13 @@ export default function ChildDashboard() {
         {child && (
           <div className="mb-3">
             <TaskSuggestions child={child} />
+          </div>
+        )}
+
+        {/* AI Exercise Suggestions */}
+        {child && (
+          <div className="mb-3">
+            <ExerciseSuggestions child={child} />
           </div>
         )}
 
