@@ -10,8 +10,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award, MessageCircle, Send } from "lucide-react";
 import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, QuizAttempt } from "@shared/schema";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
-import { LearningGoalSuggestions } from "@/components/child/learning-goal-suggestions";
-import { ExerciseSuggestions } from "@/components/child/exercise-suggestions";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 type GoalWithReward = GoalSelection & { reward: Reward };
@@ -484,20 +482,6 @@ export default function ChildDashboard() {
           </div>
         )}
 
-        {/* AI Learning Goal Suggestions */}
-        {child && (
-          <div className="mb-3">
-            <LearningGoalSuggestions child={child} />
-          </div>
-        )}
-
-
-        {/* AI Exercise Suggestions */}
-        {child && (
-          <div className="mb-3">
-            <ExerciseSuggestions child={child} />
-          </div>
-        )}
 
         {/* Available Tasks Section */}
         <div className="mb-3">

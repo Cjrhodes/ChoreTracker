@@ -16,6 +16,8 @@ import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, G
 import { useState } from "react";
 import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
+import { LearningGoalSuggestions } from "@/components/child/learning-goal-suggestions";
+import { ExerciseSuggestions } from "@/components/child/exercise-suggestions";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 
@@ -30,6 +32,7 @@ export default function ParentDashboard() {
   const [isContentViewDialogOpen, setIsContentViewDialogOpen] = useState(false);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
+  const [selectedChildForSuggestions, setSelectedChildForSuggestions] = useState<string | null>(null);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
@@ -649,6 +652,44 @@ export default function ParentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Row 4: AI Suggestions for Learning Goals and Exercise */}
+      {children.length > 0 && (() => {
+        const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-semibold">AI Suggestions</h3>
+              <Select 
+                value={selectedChildForSuggestions || children[0]?.id} 
+                onValueChange={setSelectedChildForSuggestions}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select child" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      {child.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-h-0 grid grid-cols-2 gap-4">
+              {/* AI Learning Goal Suggestions */}
+              <div>
+                <LearningGoalSuggestions child={targetChild} />
+              </div>
+
+              {/* AI Exercise Suggestions */}
+              <div>
+                <ExerciseSuggestions child={targetChild} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Content Viewing Dialog */}
       <Dialog open={isContentViewDialogOpen} onOpenChange={setIsContentViewDialogOpen}>
