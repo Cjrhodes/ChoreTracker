@@ -159,6 +159,17 @@ export const aiMessages = pgTable("ai_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Universal app messages for both parent and child chat (replaces child-only ai_messages)
+export const appMessages = pgTable("app_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partyType: varchar("party_type").notNull(), // 'parent' or 'child'
+  partyId: varchar("party_id").notNull(), // userId (if parent) or childId (if child)
+  role: varchar("role").notNull(), // 'agent' or 'user'
+  type: varchar("type").notNull(), // 'reminder', 'encouragement', 'goal_coaching', 'general_chat', 'family_status'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // AI-generated suggestions that can be accepted/dismissed
 export const aiSuggestions = pgTable("ai_suggestions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -374,6 +385,15 @@ export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
   status: z.enum(['new', 'accepted', 'dismissed']).optional(),
 });
 
+export const insertAppMessageSchema = createInsertSchema(appMessages).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  partyType: z.enum(['parent', 'child']),
+  role: z.enum(['agent', 'user']),
+  type: z.enum(['reminder', 'encouragement', 'goal_coaching', 'general_chat', 'family_status']),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -401,3 +421,5 @@ export type AiMessage = typeof aiMessages.$inferSelect;
 export type InsertAiMessage = z.infer<typeof insertAiMessageSchema>;
 export type AiSuggestion = typeof aiSuggestions.$inferSelect;
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
+export type AppMessage = typeof appMessages.$inferSelect;
+export type InsertAppMessage = z.infer<typeof insertAppMessageSchema>;
