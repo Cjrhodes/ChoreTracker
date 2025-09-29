@@ -15,6 +15,7 @@ import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, inser
 import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye } from "lucide-react";
 import { useState } from "react";
 import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
+import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 
@@ -819,6 +820,15 @@ export default function ParentDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Universal Chat Widget for Parent */}
+      {user && (
+        <UniversalChatWidget 
+          partyType="parent" 
+          partyId={user.id} 
+          userName={user.firstName || 'Parent'} 
+        />
+      )}
     </div>
   );
 }
