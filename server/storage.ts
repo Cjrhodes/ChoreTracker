@@ -133,6 +133,7 @@ export interface IStorage {
 
   // AI Suggestions operations
   getSuggestionsByChild(childId: string, status?: 'new' | 'accepted' | 'dismissed'): Promise<AiSuggestion[]>;
+  getSuggestionById(suggestionId: string): Promise<AiSuggestion | null>;
   createSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
   updateSuggestionStatus(suggestionId: string, status: 'accepted' | 'dismissed'): Promise<void>;
   acceptSuggestion(suggestionId: string): Promise<AiSuggestion>;
@@ -845,6 +846,15 @@ export class DatabaseStorage implements IStorage {
       .from(aiSuggestions)
       .where(whereCondition)
       .orderBy(desc(aiSuggestions.createdAt));
+  }
+
+  async getSuggestionById(suggestionId: string): Promise<AiSuggestion | null> {
+    const [suggestion] = await db
+      .select()
+      .from(aiSuggestions)
+      .where(eq(aiSuggestions.id, suggestionId))
+      .limit(1);
+    return suggestion || null;
   }
 
   async createSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion> {

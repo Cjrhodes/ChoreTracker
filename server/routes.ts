@@ -864,7 +864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify child belongs to authenticated user
       const child = await storage.getChild(childId);
-      if (!child || child.parentId !== req.user.id) {
+      const parentId = req.user.claims.sub;
+      if (!child || child.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
       }
@@ -918,7 +919,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify child belongs to authenticated user
       const child = await storage.getChild(childId);
-      if (!child || child.parentId !== req.user.id) {
+      const parentId = req.user.claims.sub;
+      if (!child || child.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
       }
@@ -936,8 +938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // Get suggestion and verify access
-      const suggestions = await storage.getSuggestionsByChild('', undefined); // Get all to find by ID
-      const suggestion = suggestions.find(s => s.id === id);
+      const suggestion = await storage.getSuggestionById(id);
       
       if (!suggestion) {
         res.status(404).json({ message: "Suggestion not found" });
@@ -945,7 +946,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const child = await storage.getChild(suggestion.childId);
-      if (!child || child.parentId !== req.user.id) {
+      const parentId = req.user.claims.sub;
+      if (!child || child.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
       }
@@ -958,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const payload = suggestion.payload as any;
         await storage.createLearningGoal({
           childId: suggestion.childId,
-          parentId: req.user.id,
+          parentId: parentId,
           subject: payload.subject,
           difficulty: 'medium',
           targetUnits: payload.suggestedTargetUnits,
@@ -996,9 +998,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
-      // Similar verification as accept
-      const suggestions = await storage.getSuggestionsByChild('', undefined);
-      const suggestion = suggestions.find(s => s.id === id);
+      // Get suggestion and verify access
+      const suggestion = await storage.getSuggestionById(id);
       
       if (!suggestion) {
         res.status(404).json({ message: "Suggestion not found" });
@@ -1006,7 +1007,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const child = await storage.getChild(suggestion.childId);
-      if (!child || child.parentId !== req.user.id) {
+      const parentId = req.user.claims.sub;
+      if (!child || child.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
       }
@@ -1026,7 +1028,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify child belongs to authenticated user
       const child = await storage.getChild(childId);
-      if (!child || child.parentId !== req.user.id) {
+      const parentId = req.user.claims.sub;
+      if (!child || child.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
       }
