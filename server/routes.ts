@@ -971,7 +971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const payload = suggestion.payload as any;
         // Create chore template
         const template = await storage.createChoreTemplate({
-          parentId: req.user.id,
+          parentId: parentId,
           name: payload.title,
           description: payload.description,
           pointValue: payload.pointValue,

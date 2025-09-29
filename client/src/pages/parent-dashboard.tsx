@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
 import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye } from "lucide-react";
 import { useState } from "react";
+import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 
@@ -493,72 +494,9 @@ export default function ParentDashboard() {
           </div>
         </div>
 
-        {/* Task Management Panel - New */}
-        <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-md font-semibold text-foreground flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              Task Categories
-            </h3>
-            <span className="text-xs text-muted-foreground">{choreTemplates.length} tasks</span>
-          </div>
-          <div className="space-y-3 max-h-[280px] overflow-y-auto">
-            {choreTemplates.length === 0 ? (
-              <div className="text-center py-6">
-                <CheckCircle className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">No tasks created yet</p>
-              </div>
-            ) : (
-              (() => {
-                const groupedTasks = choreTemplates.reduce((acc, template) => {
-                  const category = template.category || 'household';
-                  if (!acc[category]) acc[category] = [];
-                  acc[category].push(template);
-                  return acc;
-                }, {} as Record<string, typeof choreTemplates>);
-
-                const categoryConfig = {
-                  exercise: { icon: '🏃‍♂️', label: 'Exercise', color: 'bg-red-100 text-red-800' },
-                  household: { icon: '🧹', label: 'Household', color: 'bg-blue-100 text-blue-800' },
-                  educational: { icon: '📚', label: 'Educational', color: 'bg-purple-100 text-purple-800' },
-                  outdoor: { icon: '🌳', label: 'Outdoor', color: 'bg-green-100 text-green-800' },
-                };
-
-                return Object.entries(groupedTasks).map(([category, tasks]) => {
-                  const config = categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.household;
-                  return (
-                    <div key={category} className="bg-white/80 p-3 rounded-lg border">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{config.icon}</span>
-                          <span className="text-sm font-medium">{config.label}</span>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded ${config.color}`}>
-                          {tasks.length} tasks
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {tasks.slice(0, 3).map((task) => (
-                          <div key={task.id} className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1">
-                              <span>{task.icon}</span>
-                              <span className="truncate max-w-[120px]">{task.name}</span>
-                            </span>
-                            <span className="text-primary font-medium">{task.pointValue}pts</span>
-                          </div>
-                        ))}
-                        {tasks.length > 3 && (
-                          <div className="text-xs text-muted-foreground text-center">
-                            +{tasks.length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                });
-              })()
-            )}
-          </div>
+        {/* AI Task Suggestions Panel */}
+        <div className="max-h-[400px] overflow-y-auto">
+          <ParentTaskSuggestions children={children} />
         </div>
 
         {/* Learning Goals Panel - Larger Rectangle */}
