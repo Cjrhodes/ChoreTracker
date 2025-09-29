@@ -1021,7 +1021,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat History API Routes
+  // Universal Chat History API Routes (supports both parent and child)
+  app.get('/api/app-chat/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const { partyType, partyId, limit = 50 } = req.query;
+      const authenticatedUserId = req.user.claims.sub;
+      
+      // Validate partyType
+      if (partyType !== 'parent' && partyType !== 'child') {
+        res.status(400).json({ message: "Invalid partyType, must be 'parent' or 'child'" });
+        return;
+      }
+
+      // Authorization check
+      if (partyType === 'parent') {
+        // For parent chat, partyId should be the authenticated user's ID
+        if (partyId !== authenticatedUserId) {
+          res.status(403).json({ message: "Access denied" });
+          return;
+        }
+      } else if (partyType === 'child') {
+        // For child chat, verify child belongs to authenticated user
+        const child = await storage.getChild(partyId);
+        if (!child || child.parentId !== authenticatedUserId) {
+          res.status(403).json({ message: "Access denied" });
+          return;
+        }
+      }
+
+      const messages = await storage.getAppChatHistory(partyType, partyId, parseInt(limit));
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching app chat history:", error);
+      res.status(500).json({ message: "Failed to fetch app chat history" });
+    }
+  });
+
+  // Legacy chat history route (for backward compatibility)
   app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
       const { childId, limit = 50 } = req.query;
@@ -1047,17 +1083,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup WebSocket server for AI agent chat
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  // Store active connections by childId
-  const childConnections = new Map<string, WebSocket>();
+  // Store active connections by party (child or parent)
+  const partyConnections = new Map<string, WebSocket>();
   
   wss.on('connection', (ws, req) => {
     console.log('WebSocket connection established');
     let authenticatedUserId: string | null = null;
-    let authenticatedChildId: string | null = null;
+    let authenticatedPartyType: 'parent' | 'child' | null = null;
+    let authenticatedPartyId: string | null = null;
     
     // Verify Origin to prevent CSRF attacks
     const origin = req.headers.origin;
-    const allowedOrigins = [process.env.REPLIT_DOMAINS?.split(',')[0], 'http://localhost:5000', 'https://localhost:5000'];
+    const allowedOrigins = [process.env.REPLIT_DOMAINS?.split(',')[0], 'http://localhost:5000', 'https://localhost:5000'].filter(Boolean) as string[];
     if (origin && !allowedOrigins.some(allowed => origin.includes(allowed))) {
       console.log(`WebSocket connection rejected: invalid origin ${origin}`);
       ws.close();
@@ -1069,8 +1106,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const message = JSON.parse(data.toString());
         
         if (message.type === 'auth') {
-          // Verify authentication and child ownership
-          const { childId } = message;
+          // Universal authentication for both parent and child
+          const { partyType, partyId } = message;
           
           // Check for authentication via session cookie
           const sessionId = req.headers.cookie?.match(/connect\.sid=([^;]+)/)?.[1];
@@ -1084,29 +1121,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           try {
-            // For demonstration, we'll verify by attempting to get the child
-            // and checking if it exists. In a full implementation, you would
-            // parse the session store to get the authenticated user ID
-            const child = await storage.getChild(childId);
-            if (!child) {
+            // Validate partyType
+            if (partyType !== 'parent' && partyType !== 'child') {
               ws.send(JSON.stringify({
                 type: 'error',
-                content: 'Child not found'
+                content: 'Invalid partyType'
               }));
               ws.close();
               return;
             }
+
+            // For child: verify child exists and note parent
+            // For parent: verify user exists (partyId should be userId)
+            if (partyType === 'child') {
+              const child = await storage.getChild(partyId);
+              if (!child) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  content: 'Child not found'
+                }));
+                ws.close();
+                return;
+              }
+              authenticatedUserId = child.parentId;
+            } else if (partyType === 'parent') {
+              const user = await storage.getUser(partyId);
+              if (!user) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  content: 'User not found'
+                }));
+                ws.close();
+                return;
+              }
+              authenticatedUserId = partyId;
+            }
             
             // Store authenticated state
-            authenticatedUserId = child.parentId; // We trust the parent owns this child
-            authenticatedChildId = childId;
-            childConnections.set(childId, ws);
-            console.log(`Child ${childId} authenticated and connected via WebSocket (parent: ${child.parentId})`);
+            authenticatedPartyType = partyType;
+            authenticatedPartyId = partyId;
+            partyConnections.set(`${partyType}:${partyId}`, ws);
+            console.log(`${partyType} ${partyId} authenticated and connected via WebSocket`);
             
-            // Send welcome message
+            // Send welcome message based on party type
+            const welcomeMessage = partyType === 'child' 
+              ? `Hey! I'm your ChoreChamp Agent. What's going on today? 😊`
+              : `Welcome! I'm your ChoreChamp Agent, ready to help you manage your family's activities. How can I assist you today?`;
+            
             ws.send(JSON.stringify({
               type: 'agent_message',
-              content: `Hey! I'm your ChoreChamp Agent. What's going on today? 😊`,
+              content: welcomeMessage,
               timestamp: new Date().toISOString()
             }));
           } catch (error) {
@@ -1120,8 +1184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
         } else if (message.type === 'chat') {
-          // Verify user is authenticated for this child
-          if (!authenticatedChildId || !authenticatedUserId) {
+          // Verify user is authenticated
+          if (!authenticatedPartyType || !authenticatedPartyId || !authenticatedUserId) {
             ws.send(JSON.stringify({
               type: 'error',
               content: 'Please authenticate first'
@@ -1129,57 +1193,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return;
           }
           
-          // Child sending a chat message to the AI agent
-          const { message: childMessage } = message;
+          // User sending a chat message to the AI agent
+          const { message: userMessage } = message;
+          const partyType = authenticatedPartyType;
+          const partyId = authenticatedPartyId;
+
+          // Get conversation history for context
+          const chatHistory = await storage.getAppChatHistory(partyType, partyId, 10);
+          const conversationHistory = chatHistory.reverse().map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
           
-          // Use server-bound authenticated childId only
-          const childId = authenticatedChildId;
+          let agentResponse;
           
-          // Get child's context for AI conversation
-          const child = await storage.getChild(childId);
-          if (!child) {
+          if (partyType === 'child') {
+            // Child chat: Get child's context for AI conversation
+            const child = await storage.getChild(partyId);
+            if (!child) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                content: 'Child not found'
+              }));
+              return;
+            }
+
+            // Persist child's message to database
+            await storage.addAppMessage({
+              partyType: 'child',
+              partyId,
+              role: 'user',
+              type: 'general_chat',
+              content: userMessage
+            });
+            
+            // Get current tasks and goals for context
+            const currentTasks = await storage.getAssignedChoresByChild(partyId);
+            const learningGoals = await storage.getLearningGoalsByChild(partyId);
+            
+            // Get AI response using child-specific method
+            agentResponse = await aiContentService.chatWithAgent(
+              userMessage,
+              child.name,
+              child.age,
+              currentTasks,
+              learningGoals,
+              child.totalPoints,
+              child.level,
+              conversationHistory as any
+            );
+          } else if (partyType === 'parent') {
+            // Parent chat: Get family context
+            const user = await storage.getUser(partyId);
+            if (!user) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                content: 'User not found'
+              }));
+              return;
+            }
+
+            // Persist parent's message to database
+            await storage.addAppMessage({
+              partyType: 'parent',
+              partyId,
+              role: 'user',
+              type: 'general_chat',
+              content: userMessage
+            });
+            
+            // Build family context for parent chat
+            const children = await storage.getChildrenByParent(partyId);
+            const childrenContext = await Promise.all(children.map(async (child) => {
+              return {
+                id: child.id,
+                name: child.name,
+                age: child.age,
+                level: child.level,
+                totalPoints: child.totalPoints
+              };
+            }));
+            
+            // Calculate family stats
+            let totalPendingTasks = 0;
+            let tasksCompletedToday = 0;
+            for (const child of children) {
+              const tasks = await storage.getAssignedChoresByChild(child.id);
+              const pending = tasks.filter(t => !t.completedAt);
+              const completedToday = tasks.filter(t => {
+                if (!t.completedAt) return false;
+                const today = new Date().toISOString().split('T')[0];
+                return new Date(t.completedAt).toISOString().startsWith(today);
+              });
+              totalPendingTasks += pending.length;
+              tasksCompletedToday += completedToday.length;
+            }
+            
+            const activeLearningGoals = (await storage.getLearningGoalsByParent(partyId)).filter(g => g.isActive).length;
+            
+            // Get AI response using parent-specific method
+            const parentName = user.firstName || user.lastName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Parent';
+            agentResponse = await aiContentService.chatWithParent(
+              userMessage,
+              parentName,
+              {
+                children: childrenContext,
+                totalPendingTasks,
+                tasksCompletedToday,
+                activeLearningGoals
+              },
+              conversationHistory
+            );
+          } else {
             ws.send(JSON.stringify({
               type: 'error',
-              content: 'Child not found'
+              content: 'Invalid party type'
             }));
             return;
           }
 
-          // Persist child's message to database
-          await storage.addChatMessage({
-            childId,
-            role: 'child',
-            type: 'general_chat',
-            content: childMessage
-          });
-          
-          // Get current tasks and goals for context
-          const currentTasks = await storage.getAssignedChoresByChild(childId);
-          const learningGoals = await storage.getLearningGoalsByChild(childId);
-          
-          // Get AI response
-          const agentResponse = await aiContentService.chatWithAgent(
-            childMessage,
-            child.name,
-            child.age,
-            currentTasks,
-            learningGoals,
-            child.totalPoints,
-            child.level
-          );
-
           // Persist agent's response to database
-          await storage.addChatMessage({
-            childId,
+          await storage.addAppMessage({
+            partyType,
+            partyId,
             role: 'agent',
             type: agentResponse.type,
             content: agentResponse.message
           });
 
           // Prune old messages to prevent database bloat (keep last 200 messages)
-          await storage.pruneChatHistory(childId, 200);
+          await storage.pruneAppChatHistory(partyType, partyId, 200);
           
-          // Send AI response back to child
+          // Send AI response back to user
           ws.send(JSON.stringify({
             type: 'agent_message',
             content: agentResponse.message,
@@ -1200,10 +1345,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     ws.on('close', () => {
       // Remove connection when client disconnects
-      for (const [childId, connection] of Array.from(childConnections.entries())) {
+      for (const [connectionKey, connection] of Array.from(partyConnections.entries())) {
         if (connection === ws) {
-          childConnections.delete(childId);
-          console.log(`Child ${childId} disconnected from WebSocket`);
+          partyConnections.delete(connectionKey);
+          console.log(`Party ${connectionKey} disconnected from WebSocket`);
           break;
         }
       }
@@ -1212,7 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Function to send reminders to connected children
   const sendReminderToChild = async (childId: string, reminderMessage: string) => {
-    const ws = childConnections.get(childId);
+    const ws = partyConnections.get(`child:${childId}`);
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'agent_message',
