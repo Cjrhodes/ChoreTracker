@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Star, Trophy, Target, Clock, Gift, BookOpen, Brain, Play, Award, MessageCircle, Send } from "lucide-react";
 import type { Child, AssignedChore, ChoreTemplate, EarnedBadge, Reward, GoalSelection, LearningGoal, LearningActivity, QuizAttempt } from "@shared/schema";
-import { ChatWidget } from "@/components/ui/chat-widget";
+import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
 import { LearningGoalSuggestions } from "@/components/child/learning-goal-suggestions";
 import { ExerciseSuggestions } from "@/components/child/exercise-suggestions";
 
@@ -755,11 +755,12 @@ export default function ChildDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Always-available ChatWidget in bottom-right corner */}
+      {/* Always-available UniversalChatWidget in bottom-right corner */}
       {child && (
-        <ChatWidget 
-          childId={child.id} 
-          childName={child.name}
+        <UniversalChatWidget 
+          partyType="child"
+          partyId={child.id} 
+          userName={child.name}
         />
       )}
     </div>
