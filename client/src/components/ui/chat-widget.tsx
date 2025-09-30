@@ -200,7 +200,7 @@ export function ChatWidget({ childId, childName }: ChatWidgetProps) {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium text-sm" data-testid="chat-agent-title">TaskTitan Agent</p>
+                <p className="font-medium text-sm" data-testid="chat-agent-title">Chore Buster Agent</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {isConnected ? '🟢 Online' : '🔴 Connecting...'}
                 </p>

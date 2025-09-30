@@ -196,7 +196,7 @@ export function UniversalChatWidget({ partyType, partyId, userName }: UniversalC
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium text-sm" data-testid="universal-chat-agent-title">TaskTitan Agent</p>
+                <p className="font-medium text-sm" data-testid="universal-chat-agent-title">Chore Buster Agent</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {isConnected ? '🟢 Online' : '🔴 Connecting...'}
                 </p>

@@ -126,7 +126,7 @@ export default function ChildDashboard() {
           if (message.messageType === 'reminder') {
             setIsChatOpen(true);
             toast({
-              title: "Message from your TaskTitan Agent! 🤖",
+              title: "Message from your Chore Buster Agent! 🤖",
               description: message.content.substring(0, 50) + "...",
             });
           }
@@ -661,7 +661,7 @@ export default function ChildDashboard() {
                 🤖
               </div>
               <div>
-                <div className="text-sm font-bold">TaskTitan Agent</div>
+                <div className="text-sm font-bold">Chore Buster Agent</div>
                 <div className="text-xs text-muted-foreground">
                   {isConnected ? "Online and ready to chat!" : "Connecting..."}
                 </div>
@@ -674,7 +674,7 @@ export default function ChildDashboard() {
             {chatMessages.length === 0 && (
               <div className="text-center text-muted-foreground py-8">
                 <div className="text-4xl mb-2">👋</div>
-                <p>Start chatting with your TaskTitan Agent!</p>
+                <p>Start chatting with your Chore Buster Agent!</p>
                 <p className="text-xs mt-1">Ask about your tasks, goals, or just say hi!</p>
               </div>
             )}
