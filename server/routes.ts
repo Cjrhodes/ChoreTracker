@@ -481,6 +481,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/learning/goals/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { childId } = req.body;
+      const parentId = req.user.claims.sub;
+      
+      if (!childId) {
+        return res.status(400).json({ message: "childId is required" });
+      }
+
+      // Verify the original goal belongs to parent
+      const goal = await storage.getLearningGoal(id);
+      if (!goal || goal.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to goal" });
+      }
+
+      // Verify the target child belongs to parent
+      const child = await storage.getChild(childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Unauthorized access to child" });
+      }
+
+      // Create a copy of the learning goal for the new child
+      const newGoal = await storage.createLearningGoal({
+        childId,
+        parentId,
+        subject: goal.subject,
+        difficulty: goal.difficulty as 'easy' | 'medium' | 'hard',
+        targetUnits: goal.targetUnits,
+        pointsPerUnit: goal.pointsPerUnit,
+        isActive: true
+      });
+
+      res.json(newGoal);
+    } catch (error) {
+      console.error("Error assigning learning goal:", error);
+      res.status(500).json({ message: "Failed to assign learning goal" });
+    }
+  });
+
   // AI Content Generation routes
   app.post('/api/learning/goals/:goalId/generate-synopsis', isAuthenticated, async (req: any, res) => {
     try {

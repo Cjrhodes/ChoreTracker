@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell } from "lucide-react";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell, GripVertical } from "lucide-react";
 import { useState } from "react";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
 import { AutoSuggestions } from "@/components/parent/auto-suggestions";
@@ -203,13 +203,47 @@ export default function ParentDashboard() {
     },
   });
 
+  const assignItemMutation = useMutation({
+    mutationFn: async ({ type, id, childId }: { type: string; id: string; childId: string }) => {
+      if (type === 'chore_template' || type === 'exercise') {
+        return apiRequest('POST', '/api/assigned-chores', {
+          childId,
+          choreTemplateId: id,
+          assignedDate: new Date().toISOString().split('T')[0]
+        });
+      } else if (type === 'learning_goal') {
+        return apiRequest('POST', `/api/learning/goals/${id}/assign`, { childId });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/assigned-chores'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/children'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/learning/goals'] });
+      toast({
+        title: "Task Assigned! ✅",
+        description: "The task has been assigned to the family member.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Assignment Failed",
+        description: "Couldn't assign the task. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDrop = (e: React.DragEvent, child: Child) => {
     e.preventDefault();
     const data = e.dataTransfer.getData('application/json');
     if (data) {
       try {
-        const { suggestionId } = JSON.parse(data);
-        assignSuggestionMutation.mutate({ suggestionId, childId: child.id });
+        const parsed = JSON.parse(data);
+        if (parsed.suggestionId) {
+          assignSuggestionMutation.mutate({ suggestionId: parsed.suggestionId, childId: child.id });
+        } else if (parsed.type && parsed.id) {
+          assignItemMutation.mutate({ type: parsed.type, id: parsed.id, childId: child.id });
+        }
       } catch (error) {
         console.error('Error parsing drop data:', error);
       }
@@ -547,8 +581,22 @@ export default function ParentDashboard() {
                   </div>
                 ) : (
                   choreTemplates.filter(t => t.category !== 'exercise').map(chore => (
-                    <div key={chore.id} className="p-2 bg-muted/50 rounded-lg border border-border">
+                    <div 
+                      key={chore.id} 
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          type: 'chore_template',
+                          id: chore.id,
+                          name: chore.name
+                        }));
+                      }}
+                      className="p-2 bg-muted/50 rounded-lg border border-border cursor-move hover:shadow-md transition-shadow"
+                      data-testid={`chore-template-${chore.id}`}
+                    >
                       <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <span className="text-xl">{chore.icon}</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{chore.name}</div>
@@ -603,14 +651,30 @@ export default function ParentDashboard() {
                   </div>
                 ) : (
                   learningGoals.map((goal) => (
-                    <div key={goal.id} className="bg-muted/50 p-2 rounded-lg border border-border">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="text-sm font-medium truncate flex-1">{goal.subject}</div>
-                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                          {goal.difficulty}
-                        </span>
+                    <div 
+                      key={goal.id} 
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          type: 'learning_goal',
+                          id: goal.id,
+                          subject: goal.subject
+                        }));
+                      }}
+                      className="bg-muted/50 p-2 rounded-lg border border-border cursor-move hover:shadow-md transition-shadow"
+                      data-testid={`learning-goal-${goal.id}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center justify-between flex-1">
+                          <div className="text-sm font-medium truncate flex-1">{goal.subject}</div>
+                          <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                            {goal.difficulty}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mb-2">
+                      <div className="text-xs text-muted-foreground mb-2 ml-6">
                         {goal.targetUnits} activities • {goal.pointsPerUnit} pts
                       </div>
                       {(() => {
@@ -695,8 +759,22 @@ export default function ParentDashboard() {
                   </div>
                 ) : (
                   choreTemplates.filter(t => t.category === 'exercise').map(chore => (
-                    <div key={chore.id} className="p-2 bg-muted/50 rounded-lg border border-border">
+                    <div 
+                      key={chore.id} 
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          type: 'exercise',
+                          id: chore.id,
+                          name: chore.name
+                        }));
+                      }}
+                      className="p-2 bg-muted/50 rounded-lg border border-border cursor-move hover:shadow-md transition-shadow"
+                      data-testid={`exercise-${chore.id}`}
+                    >
                       <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <span className="text-xl">{chore.icon}</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{chore.name}</div>
