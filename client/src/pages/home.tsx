@@ -32,9 +32,9 @@ export default function Home() {
       
       <main className="sticky-header-space">
         {activeInterface === "child" ? (
-          <ChildDashboard />
+          <ChildDashboard key="child-dashboard" />
         ) : (
-          <ParentDashboard />
+          <ParentDashboard key="parent-dashboard" />
         )}
       </main>
     </div>
