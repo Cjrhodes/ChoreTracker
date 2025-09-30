@@ -11,7 +11,7 @@ export default function Landing() {
               🏆
             </div>
             
-            <h1 className="text-3xl font-bold mb-3" style={{ color: '#0e3c1c' }}>
+            <h1 className="text-3xl font-bold mb-3" style={{ color: '#2c6e2b' }}>
               Welcome to Chore Buster!
             </h1>
             

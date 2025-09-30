@@ -14,7 +14,7 @@ export default function InterfaceToggle({ activeInterface, onToggle }: Interface
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logoUrl} alt="Chore Buster Logo" className="h-12 w-12 md:h-14 md:w-14" />
-            <h1 className="text-xl font-bold md:text-2xl lg:text-3xl" style={{ color: '#0e3c1c' }} data-testid="text-app-title">
+            <h1 className="text-xl font-bold md:text-2xl lg:text-3xl" style={{ color: '#2c6e2b' }} data-testid="text-app-title">
               Chore Buster
             </h1>
           </div>
