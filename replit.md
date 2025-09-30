@@ -1,6 +1,6 @@
 # Overview
 
-Chore Buster is a family chore management application designed to gamify household tasks for children while providing parents with organizational tools. The system allows parents to create and assign chores to their children, who can complete tasks to earn points and badges. Children can set goals for rewards and track their progress through an engaging, game-like interface.
+Chore Buster is a family chore management application that gamifies household tasks for children and provides parents with organizational tools. It enables parents to assign chores, allowing children to earn points and badges, set reward goals, and track progress through an engaging interface. The project aims to enhance family cooperation and task management.
 
 # User Preferences
 
@@ -10,220 +10,50 @@ Preferred communication style: Simple, everyday language.
 
 ## Frontend Architecture
 
-The application uses a React-based frontend with TypeScript, built using Vite for fast development and optimized builds. The UI leverages shadcn/ui components built on top of Radix UI primitives, providing a comprehensive design system with Tailwind CSS for styling.
-
-**Key Design Decisions:**
-- **Dual Interface Pattern**: The app features toggleable interfaces (child mode vs parent mode) within a single application, allowing families to share one device while maintaining role-specific experiences
-- **Mobile-First Design**: The interface is optimized for mobile devices with a maximum width container, recognizing that families often share tablets or phones
-- **Component-Based Architecture**: Uses a modular component structure with reusable UI components and page-specific components separated by user role (child/ and parent/ directories)
-
-**State Management:**
-- TanStack Query for server state management and caching
-- React Hook Form with Zod validation for form handling
-- Local component state for UI interactions
-
-**Routing:**
-- Wouter for lightweight client-side routing
-- Protected routes based on authentication status
+The application uses a React-based frontend with TypeScript, built with Vite. It leverages shadcn/ui components (built on Radix UI) and Tailwind CSS for styling. Key design decisions include a dual interface pattern for child and parent modes, a mobile-first approach, and a component-based architecture organized by user role. State management is handled by TanStack Query for server state and React Hook Form with Zod for forms, while Wouter manages client-side routing with protected routes.
 
 ## Backend Architecture
 
-The backend follows a RESTful API design using Express.js with TypeScript. The server architecture emphasizes simplicity and maintainability.
-
-**Key Design Decisions:**
-- **Express.js with TypeScript**: Provides type safety while maintaining familiar Node.js patterns
-- **File-based Route Organization**: Routes are organized in a single routes.ts file with clear separation by entity type
-- **Middleware Pattern**: Uses Express middleware for authentication, logging, and error handling
-- **Storage Abstraction**: Implements a storage interface pattern that abstracts database operations, making the system testable and database-agnostic
-
-**API Structure:**
-- RESTful endpoints organized by resource (children, chores, rewards, etc.)
-- Consistent error handling and response formats
-- Request validation using Zod schemas
-- Authentication middleware protecting all data endpoints
+The backend is a RESTful API built with Express.js and TypeScript, emphasizing simplicity and maintainability. It uses Express middleware for authentication, logging, and error handling, and implements a storage abstraction layer for database operations. The API features RESTful endpoints organized by resource, consistent error handling, Zod for request validation, and authentication middleware for data protection.
 
 ## Data Storage Solutions
 
-The application uses PostgreSQL as the primary database with Drizzle ORM for type-safe database interactions.
-
-**Database Design:**
-- **Relational Schema**: Uses foreign key relationships to maintain data integrity between users, children, chores, and rewards
-- **UUID Primary Keys**: Ensures scalability and avoids potential security issues with sequential IDs
-- **Audit Fields**: Includes created_at and updated_at timestamps for tracking
-- **Session Storage**: Uses PostgreSQL for session persistence, required for Replit Auth integration
-
-**Key Tables:**
-- `users`: Parent accounts with profile information
-- `children`: Child profiles linked to parents
-- `chore_templates`: Reusable chore definitions created by parents
-- `assigned_chores`: Individual chore instances assigned to children
-- `rewards`: Reward definitions that children can work toward
-- `earned_badges`: Achievement tracking system
+PostgreSQL is the primary database, accessed via Drizzle ORM for type-safe interactions. The database design uses a relational schema with foreign key relationships, UUID primary keys, and audit fields. PostgreSQL also stores session data for Replit Auth integration. Key tables include `users`, `children`, `chore_templates`, `assigned_chores`, `rewards`, and `earned_badges`.
 
 ## Authentication and Authorization
 
-The system uses Replit's OpenID Connect (OIDC) authentication service with Passport.js for session management.
+The system integrates Replit's OpenID Connect (OIDC) service with Passport.js for session management. It uses OIDC for authentication, Passport.js middleware, and PostgreSQL-backed session storage. Role-based access control ensures parents only access their children's data. Security measures include session-based authentication, CSRF protection, request validation, and parent-child relationship verification.
 
-**Authentication Flow:**
-- OIDC discovery for automatic configuration
-- Passport.js middleware for authentication handling
-- PostgreSQL-backed session storage for persistence
-- Role-based access control (parents can only access their own children's data)
+## Core Features
 
-**Security Measures:**
-- Session-based authentication with secure cookies
-- CSRF protection through same-site cookie settings
-- Request validation and sanitization
-- Parent-child relationship verification on all child-related operations
+- **Dual Dashboards:** Separate, role-specific interfaces for parents and children.
+- **AI-Powered Chat:** A universal chat system providing guidance and suggestions for both parents and children, with message history persistence.
+- **Dynamic Parent Dashboard:** A 4-column vertical layout for managing family members, chores, learning, and exercise, with internal scrolling for content areas.
+- **AI-Generated Suggestions:** Automatic generation of task, learning, and exercise suggestions tailored to children's profiles.
+- **Drag-and-Drop Assignment:** Intuitive drag-and-drop functionality for assigning both AI-generated and user-created tasks, learning goals, and exercise activities to children.
+- **Child-Specific Settings & AI Personalization:** Settings for each child (goals, interests, reminders) to personalize AI suggestions and task generation.
 
 # External Dependencies
 
 ## Third-Party Services
 
-**Replit Authentication Service:**
-- OpenID Connect provider for user authentication
-- Handles user registration and login flows
-- Provides user profile information and session management
+- **Replit Authentication Service:** OpenID Connect provider for user authentication and session management.
 
 ## Database Services
 
-**Neon Database (PostgreSQL):**
-- Serverless PostgreSQL hosting
-- Connection pooling for efficient database access
-- Automatic backups and scaling
+- **Neon Database (PostgreSQL):** Serverless PostgreSQL hosting with connection pooling, automatic backups, and scaling.
 
 ## Development and Build Tools
 
-**Frontend Build Tools:**
-- Vite for development server and production builds
-- PostCSS and Autoprefixer for CSS processing
-- TypeScript compiler for type checking
-
-**Backend Runtime:**
-- Node.js with ESM module support
-- tsx for TypeScript execution in development
-- esbuild for production bundling
+- **Frontend Build Tools:** Vite, PostCSS, Autoprefixer, TypeScript compiler.
+- **Backend Runtime:** Node.js with ESM, tsx (development), esbuild (production).
 
 ## UI and Styling Libraries
 
-**Component Libraries:**
-- Radix UI for accessible component primitives
-- shadcn/ui for pre-built component implementations
-- Tailwind CSS for utility-first styling
-- Lucide React for consistent iconography
-
-**Form and Validation:**
-- React Hook Form for form state management
-- Zod for runtime type validation and schema definition
-- Hookform resolvers for integration between form library and validation
+- **Component Libraries:** Radix UI, shadcn/ui, Tailwind CSS, Lucide React.
+- **Form and Validation:** React Hook Form, Zod, Hookform resolvers.
 
 ## Database and ORM
 
-**Drizzle ORM:**
-- Type-safe database queries and schema definition
-- Migration system for database versioning
-- PostgreSQL dialect support
-
-**Database Drivers:**
-- @neondatabase/serverless for optimized PostgreSQL connections
-- WebSocket support for real-time capabilities
-
-# Recent Changes
-
-**September 26, 2025:**
-- **COMPLETED: Switchboard Layout Implementation** - Successfully implemented architect-recommended "switchboard" layout using CSS Grid with explicit track sizes
-- Both dashboards now fit within 720px viewport without page scrolling (core requirement achieved)
-- **Layout Details:**
-  - Child dashboard: 4-row grid (64px header + 32px goal bar + flexible quests + 120px rewards/badges)
-  - Parent dashboard: 3-row grid (64px KPI header + 48px action buttons + flexible micro-panels)
-  - Uses h-[calc(100dvh-143px)] to account for sticky header and ensure perfect viewport fit
-  - Internal scrolling only in content areas (no page-level scrolling)
-- All key functionality visible in one view without scrolling requirement **ACHIEVED**
-- Created custom Chore Buster logo with golden trophy design and integrated across app
-- Confirmed Get Started button functionality and authentication flow
-
-**September 29, 2025:**
-- **COMPLETED: Universal Chat System Implementation** - Successfully implemented AI-powered chat agent for both parent and child users
-- **Database Schema:**
-  - Created `app_messages` table with polymorphic design (partyType, partyId) to support both parent and child conversations
-  - Supports message history persistence with role (user/agent), type (chat/suggestion), and timestamp tracking
-- **AI Service Enhancement:**
-  - Extended AI service with `chatWithParent` method providing family status context, children's progress insights, and household management guidance
-  - Maintains existing `chatWithAgent` for child conversations with encouragement and coaching functionality
-- **Backend Implementation:**
-  - Universal WebSocket handler supporting both parent and child authentication and message routing
-  - REST endpoint for chat history retrieval: GET /api/app-chat/history?partyType={parent|child}&partyId={id}
-  - Session-based WebSocket authentication with party context stored in WebSocket connection
-- **Frontend Component:**
-  - Created `UniversalChatWidget` component with party-type awareness (parent/child modes)
-  - Positioned in bottom-right corner with toggle button, always-available design pattern
-  - Real-time messaging with WebSocket connection status indicator
-  - Integrated into both parent and child dashboards with appropriate context passing
-- **End-to-End Testing:**
-  - Verified parent chat functionality: family status queries, progress tracking, AI-powered suggestions
-  - Verified child chat functionality: daily guidance, encouragement, task recommendations
-  - Confirmed WebSocket authentication, message persistence, and chat history retrieval for both modes
-- **Architecture Notes:**
-  - Legacy child chat modal remains alongside new widget (can be consolidated in future refactor)
-  - WebSocket security improvements noted for future enhancement (token-based auth vs session)
-
-**September 30, 2025:**
-- **COMPLETED: Parent Dashboard 4-Column Vertical Layout Redesign** - Transformed parent dashboard from scrollable panels to multi-column layout
-- **Design Changes:**
-  - Removed left navigation index with scroll-to-section links
-  - Implemented 4-column grid layout with panels running vertically side-by-side
-  - Column 1: Family Members - List view with brief summaries, click opens detailed modal
-  - Column 2: Chores & Tasks - Template list with suggestion button at bottom
-  - Column 3: Learning - Learning goals with content generation and suggestion button at bottom
-  - Column 4: Exercise - Exercise tasks with suggestion button at bottom
-  - Each panel has internal scrolling with scrollbar-hide utility
-  - Top action bar with Add Child, Add Chore, Add Reward, and Review Approvals buttons
-- **User Experience:**
-  - All content categories visible at once in single viewport
-  - Direct access to all features without scrolling or navigation clicks
-  - Family member cards clickable to view detailed stats (level, XP, points, badges)
-  - AI suggestion buttons positioned at bottom of each panel for easy access
-
-- **COMPLETED: Auto-Generated Suggestions with Drag-and-Drop Assignment** - Implemented intelligent suggestion system with intuitive task assignment
-- **Feature Implementation:**
-  - Created `AutoSuggestions` component that auto-generates 3 AI suggestions per category on mount
-  - Auto-generation triggers when no suggestions exist for a child, using useEffect with one-time guard
-  - Generates suggestions for 3 categories: tasks (household chores), learning goals, and exercise activities
-  - Quick add + buttons added to all panel headers for rapid item creation
-- **Drag-and-Drop Interface:**
-  - Suggestion tiles are draggable with visible grip handles (GripVertical icon)
-  - Family member cards serve as drop targets with visual feedback
-  - HTML5 drag API implementation with proper data transfer and preventDefault
-  - Dragging suggestion to child card triggers instant assignment with toast confirmation
-- **Backend Enhancement:**
-  - Created POST /api/ai/suggestions/:id/assign endpoint for secure task assignment
-  - Dual ownership verification: validates both original child and target child belong to authenticated parent
-  - Materializes suggestions into actual chore templates or learning goals upon assignment
-  - Returns appropriate error codes (400, 403, 404, 500) for various failure scenarios
-- **Security & Performance:**
-  - Fixed critical security vulnerability: endpoint now verifies suggestion's original child ownership
-  - Added setTimeout cleanup in useEffect to prevent memory leaks on component unmount
-  - Proper cache invalidation after assignment to update UI across all affected queries
-- **End-to-End Testing:**
-  - Verified auto-generation creates 3 suggestions per category on dashboard load
-  - Confirmed drag-and-drop flow: grab suggestion tile, drop on family member card, task assigned
-  - Validated backend security checks prevent cross-family task assignment
-  - Toast notifications and UI updates confirmed working correctly
-
-- **COMPLETED: User-Created Items Drag-and-Drop Assignment** - Extended drag-and-drop to all user-added content
-- **Frontend Enhancement:**
-  - All chore/task templates now draggable with visible grip handles
-  - All learning goals draggable with grip handles
-  - All exercise tasks draggable with grip handles
-  - Unified drop handler routes suggestions and user items to appropriate endpoints
-  - Expanded cache invalidation to include child-specific queries and recent-chores
-- **Backend Security:**
-  - Fixed critical vulnerability in POST /api/assigned-chores endpoint
-  - Added dual ownership verification: validates both child and template belong to authenticated parent
-  - POST /api/learning/goals/:id/assign creates copy of goal for target child with ownership checks
-  - Returns 403 for unauthorized access attempts
-- **UX Improvements:**
-  - Learning goal assignment creates a copy for the new child (allows same goal across multiple children)
-  - Chore/exercise assignment creates assigned task for target child
-  - All assignments show success toast and update UI instantly
-  - Prevents cross-family task assignment with proper authorization checks
+- **Drizzle ORM:** Type-safe database queries, schema definition, and migration system.
+- **Database Drivers:** @neondatabase/serverless for PostgreSQL connections.
