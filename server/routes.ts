@@ -94,6 +94,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/children/:id/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const parentId = req.user.claims.sub;
+      
+      // Verify child belongs to parent
+      const child = await storage.getChild(id);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      if (child.parentId !== parentId) {
+        return res.status(403).json({ message: "Not authorized to update this child's settings" });
+      }
+      
+      const { goals, interests, reminderEnabled, reminderMethod } = req.body;
+      const updated = await storage.updateChildSettings(id, {
+        goals,
+        interests,
+        reminderEnabled,
+        reminderMethod,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating child settings:", error);
+      res.status(500).json({ message: "Failed to update child settings" });
+    }
+  });
+
   // Chore template routes
   app.get('/api/chore-templates', isAuthenticated, async (req: any, res) => {
     try {

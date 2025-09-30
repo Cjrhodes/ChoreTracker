@@ -58,6 +58,7 @@ export interface IStorage {
   createChild(child: InsertChild): Promise<Child>;
   updateChildPoints(childId: string, points: number): Promise<void>;
   updateChildGoal(childId: string, goalId: string | null): Promise<void>;
+  updateChildSettings(childId: string, settings: { goals?: string; interests?: string; reminderEnabled?: boolean; reminderMethod?: string }): Promise<Child>;
   deleteChild(childId: string): Promise<void>;
 
   // Chore operations
@@ -238,6 +239,15 @@ export class DatabaseStorage implements IStorage {
       .update(children)
       .set({ currentGoalId: goalId })
       .where(eq(children.id, childId));
+  }
+
+  async updateChildSettings(childId: string, settings: { goals?: string; interests?: string; reminderEnabled?: boolean; reminderMethod?: string }): Promise<Child> {
+    const [updated] = await db
+      .update(children)
+      .set(settings)
+      .where(eq(children.id, childId))
+      .returning();
+    return updated;
   }
 
   async deleteChild(childId: string): Promise<void> {
