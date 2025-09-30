@@ -520,7 +520,7 @@ export default function ParentDashboard() {
               </div>
 
               {/* Panels */}
-              <div className="flex flex-col gap-3 overflow-y-auto">
+              <div className="flex flex-col gap-3 overflow-y-auto scrollbar-hide">
                 {/* Chores Panel */}
                 <Card id="panel-chores" data-testid="panel-chores" className="scroll-mt-3">
                   <CardHeader>
