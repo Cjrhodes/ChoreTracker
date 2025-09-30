@@ -1021,6 +1021,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/ai/suggestions/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { childId } = req.body;
+      
+      if (!childId) {
+        res.status(400).json({ message: "childId is required" });
+        return;
+      }
+
+      // Get suggestion and verify access
+      const suggestion = await storage.getSuggestionById(id);
+      
+      if (!suggestion) {
+        res.status(404).json({ message: "Suggestion not found" });
+        return;
+      }
+
+      // Verify the target child belongs to the authenticated user
+      const targetChild = await storage.getChild(childId);
+      const parentId = req.user.claims.sub;
+      if (!targetChild || targetChild.parentId !== parentId) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
+      // Accept and assign the suggestion to the specified child
+      await storage.acceptSuggestion(id);
+
+      // Materialize the suggestion based on its kind
+      if (suggestion.kind === 'learning_goal') {
+        const payload = suggestion.payload as any;
+        await storage.createLearningGoal({
+          childId: childId,
+          parentId: parentId,
+          subject: payload.subject,
+          difficulty: 'medium',
+          targetUnits: payload.suggestedTargetUnits || payload.targetUnits || 5,
+          pointsPerUnit: payload.pointsPerUnit || 10,
+          isActive: true
+        });
+      } else if (suggestion.kind === 'task' || suggestion.kind === 'exercise') {
+        const payload = suggestion.payload as any;
+        // Create chore template
+        const template = await storage.createChoreTemplate({
+          parentId: parentId,
+          name: payload.title || payload.subject,
+          description: payload.description || payload.rationale,
+          pointValue: payload.pointValue || payload.pointsReward || 20,
+          category: payload.category || (suggestion.kind === 'exercise' ? 'exercise' : 'educational'),
+          frequency: payload.frequency || 'custom'
+        });
+        
+        // Assign to the specified child
+        await storage.assignChore({
+          childId: childId,
+          choreTemplateId: template.id,
+          assignedDate: new Date().toISOString().split('T')[0]
+        });
+      }
+
+      res.json({ message: "Suggestion assigned successfully" });
+    } catch (error) {
+      console.error("Error assigning AI suggestion:", error);
+      res.status(500).json({ message: "Failed to assign suggestion" });
+    }
+  });
+
   // Universal Chat History API Routes (supports both parent and child)
   app.get('/api/app-chat/history', isAuthenticated, async (req: any, res) => {
     try {

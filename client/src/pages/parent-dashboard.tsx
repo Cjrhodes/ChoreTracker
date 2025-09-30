@@ -14,10 +14,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
 import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell } from "lucide-react";
 import { useState } from "react";
-import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
-import { LearningGoalSuggestions } from "@/components/child/learning-goal-suggestions";
-import { ExerciseSuggestions } from "@/components/child/exercise-suggestions";
+import { AutoSuggestions } from "@/components/parent/auto-suggestions";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 
@@ -34,7 +32,6 @@ export default function ParentDashboard() {
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [isChildDetailsDialogOpen, setIsChildDetailsDialogOpen] = useState(false);
-  const [selectedChildForSuggestions, setSelectedChildForSuggestions] = useState<string | null>(null);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
@@ -184,21 +181,50 @@ export default function ParentDashboard() {
     },
   });
 
-  const totalPoints = children.reduce((sum, child) => sum + child.totalPoints, 0);
-  const completedToday = recentChores.filter(chore => {
-    if (!chore.completedAt) return false;
-    const today = new Date().toISOString().split('T')[0];
-    return new Date(chore.completedAt).toISOString().startsWith(today);
-  }).length;
-  const pendingApprovals = recentChores.filter(chore => chore.completedAt && !chore.approvedAt).length;
-  const thisWeekCompleted = recentChores.filter(chore => {
-    if (!chore.completedAt) return false;
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return new Date(chore.completedAt) > weekAgo;
-  }).length;
+  const assignSuggestionMutation = useMutation({
+    mutationFn: async ({ suggestionId, childId }: { suggestionId: string; childId: string }) => {
+      return apiRequest('POST', `/api/ai/suggestions/${suggestionId}/assign`, { childId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chore-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/learning/goals'] });
+      toast({
+        title: "Task Assigned! ✅",
+        description: "The task has been assigned to the family member.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Assignment Failed",
+        description: "Couldn't assign the task. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
+  const handleDrop = (e: React.DragEvent, child: Child) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('application/json');
+    if (data) {
+      try {
+        const { suggestionId } = JSON.parse(data);
+        assignSuggestionMutation.mutate({ suggestionId, childId: child.id });
+      } catch (error) {
+        console.error('Error parsing drop data:', error);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const pendingApprovals = recentChores.filter(chore => chore.completedAt && !chore.approvedAt).length;
+
+  // Use first child for suggestions, or empty string
+  const suggestionChildId = children[0]?.id || '';
 
   return (
     <div className="responsive-container h-[calc(100dvh-143px)] p-3 overflow-hidden">
@@ -437,10 +463,21 @@ export default function ParentDashboard() {
           {/* Column 1: Family Members */}
           <Card className="flex flex-col overflow-hidden" data-testid="panel-family">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Users className="w-4 h-4" />
-                Family Members
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="w-4 h-4" />
+                  Family Members
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => setIsChildDialogOpen(true)}
+                  data-testid="button-add-child-quick"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
               <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
@@ -455,11 +492,13 @@ export default function ParentDashboard() {
                   children.map((child) => (
                     <div 
                       key={child.id} 
-                      className="p-2 bg-muted/50 rounded-lg border border-border hover:border-primary cursor-pointer transition-colors"
+                      className="p-2 bg-muted/50 rounded-lg border-2 border-border hover:border-primary cursor-pointer transition-all"
                       onClick={() => {
                         setSelectedChild(child);
                         setIsChildDetailsDialogOpen(true);
                       }}
+                      onDrop={(e) => handleDrop(e, child)}
+                      onDragOver={handleDragOver}
                       data-testid={`child-card-${child.id}`}
                     >
                       <div className="flex items-center gap-2 mb-1">
@@ -483,10 +522,21 @@ export default function ParentDashboard() {
           {/* Column 2: Chores & Tasks */}
           <Card className="flex flex-col overflow-hidden" data-testid="panel-chores">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CheckCircle className="w-4 h-4" />
-                Chores & Tasks
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CheckCircle className="w-4 h-4" />
+                  Chores & Tasks
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => setIsChoreDialogOpen(true)}
+                  data-testid="button-add-chore-quick"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
               <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
@@ -510,7 +560,17 @@ export default function ParentDashboard() {
                 )}
               </div>
               <div className="mt-2 pt-2 border-t">
-                <ParentTaskSuggestions children={children} />
+                <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  AI Suggestions
+                </div>
+                {suggestionChildId ? (
+                  <AutoSuggestions childId={suggestionChildId} kind="task" children={children} />
+                ) : (
+                  <div className="text-center py-2 text-xs text-muted-foreground">
+                    Add a child first
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -523,84 +583,15 @@ export default function ParentDashboard() {
                   <GraduationCap className="w-4 h-4" />
                   Learning
                 </CardTitle>
-                <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" data-testid="button-add-learning-goal">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Learning Goal</DialogTitle>
-                    </DialogHeader>
-                    <Form {...learningGoalForm}>
-                      <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="childId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Child</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-child">
-                                    <SelectValue placeholder="Select a child" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {children.map((child) => (
-                                    <SelectItem key={child.id} value={child.id}>
-                                      {child.name} (Age {child.age})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="subject"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Subject</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., Ocean Animals, Space, History" data-testid="input-subject" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={learningGoalForm.control}
-                          name="difficulty"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Difficulty Level</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-difficulty">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="easy">Easy</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="hard">Hard</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
-                          {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => setIsLearningGoalDialogOpen(true)}
+                  data-testid="button-add-learning-quick"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
@@ -661,11 +652,15 @@ export default function ParentDashboard() {
                 )}
               </div>
               <div className="mt-2 pt-2 border-t">
-                {children.length > 0 && targetChild ? (
-                  <LearningGoalSuggestions child={targetChild} />
+                <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  AI Suggestions
+                </div>
+                {suggestionChildId ? (
+                  <AutoSuggestions childId={suggestionChildId} kind="learning_goal" children={children} />
                 ) : (
-                  <div className="text-center py-2" data-testid="learning-goal-suggestions">
-                    <p className="text-xs text-muted-foreground">Add children first</p>
+                  <div className="text-center py-2 text-xs text-muted-foreground">
+                    Add a child first
                   </div>
                 )}
               </div>
@@ -675,10 +670,21 @@ export default function ParentDashboard() {
           {/* Column 4: Exercise */}
           <Card className="flex flex-col overflow-hidden" data-testid="panel-exercise">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Dumbbell className="w-4 h-4" />
-                Exercise
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Dumbbell className="w-4 h-4" />
+                  Exercise
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => setIsChoreDialogOpen(true)}
+                  data-testid="button-add-exercise-quick"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
               <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
@@ -702,11 +708,15 @@ export default function ParentDashboard() {
                 )}
               </div>
               <div className="mt-2 pt-2 border-t">
-                {children.length > 0 && targetChild ? (
-                  <ExerciseSuggestions child={targetChild} />
+                <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  AI Suggestions
+                </div>
+                {suggestionChildId ? (
+                  <AutoSuggestions childId={suggestionChildId} kind="exercise" children={children} />
                 ) : (
-                  <div className="text-center py-2" data-testid="exercise-suggestions">
-                    <p className="text-xs text-muted-foreground">Add children first</p>
+                  <div className="text-center py-2 text-xs text-muted-foreground">
+                    Add a child first
                   </div>
                 )}
               </div>
@@ -714,6 +724,81 @@ export default function ParentDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Learning Goal Dialog */}
+      <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Learning Goal</DialogTitle>
+          </DialogHeader>
+          <Form {...learningGoalForm}>
+            <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
+              <FormField
+                control={learningGoalForm.control}
+                name="childId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Child</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-child">
+                          <SelectValue placeholder="Select a child" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {children.map((child) => (
+                          <SelectItem key={child.id} value={child.id}>
+                            {child.name} (Age {child.age})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={learningGoalForm.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g., Ocean Animals, Space, History" data-testid="input-subject" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={learningGoalForm.control}
+                name="difficulty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Difficulty Level</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-difficulty">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
+                {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Child Details Dialog */}
       <Dialog open={isChildDetailsDialogOpen} onOpenChange={setIsChildDetailsDialogOpen}>
