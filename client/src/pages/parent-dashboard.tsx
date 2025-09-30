@@ -32,6 +32,8 @@ export default function ParentDashboard() {
   const [isContentViewDialogOpen, setIsContentViewDialogOpen] = useState(false);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [isChildDetailsDialogOpen, setIsChildDetailsDialogOpen] = useState(false);
   const [selectedChildForSuggestions, setSelectedChildForSuggestions] = useState<string | null>(null);
   
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
@@ -199,158 +201,358 @@ export default function ParentDashboard() {
   const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
 
   return (
-    <div className="responsive-container h-[calc(100dvh-143px)] p-0 overflow-hidden">
-      <div className="h-full flex flex-col">
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full grid grid-rows-[auto_auto_minmax(0,1fr)] gap-3 p-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-border rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Family Stats</h3>
-                <div className="flex gap-3">
-                  <div className="bg-white/80 border border-green-200 rounded-lg px-3 py-2 text-center flex-1">
-                    <div className="text-lg font-bold text-green-600" data-testid="text-completed-today">{completedToday}</div>
-                    <div className="text-xs text-green-700">Today</div>
-                  </div>
-                  <div className="bg-white/80 border border-blue-200 rounded-lg px-3 py-2 text-center flex-1">
-                    <div className="text-lg font-bold text-blue-600" data-testid="text-total-points">{totalPoints}</div>
-                    <div className="text-xs text-blue-700">Points</div>
-                  </div>
-                  <div className="bg-white/80 border border-orange-200 rounded-lg px-3 py-2 text-center flex-1">
-                    <div className="text-lg font-bold text-orange-600" data-testid="text-pending-approvals">{pendingApprovals}</div>
-                    <div className="text-xs text-orange-700">Pending</div>
-                  </div>
-                  <div className="bg-white/80 border border-purple-200 rounded-lg px-3 py-2 text-center flex-1">
-                    <div className="text-lg font-bold text-purple-600" data-testid="text-week-completed">{thisWeekCompleted}</div>
-                    <div className="text-xs text-purple-700">Week</div>
-                  </div>
-                </div>
-              </div>
+    <div className="responsive-container h-[calc(100dvh-143px)] p-3 overflow-hidden">
+      <div className="h-full flex flex-col gap-3">
+        {/* Top Action Bar */}
+        <div className="bg-white border border-border rounded-lg p-3">
+          <div className="flex items-center gap-3">
+            <Dialog open={isChildDialogOpen} onOpenChange={setIsChildDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="default" className="flex items-center gap-2" data-testid="button-add-child">
+                  <Users className="w-4 h-4" />
+                  Add Child
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Child</DialogTitle>
+                </DialogHeader>
+                <Form {...childForm}>
+                  <form onSubmit={childForm.handleSubmit((data) => createChild.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={childForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-child-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={childForm.control}
+                      name="age"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-child-age" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createChild.isPending} data-testid="button-save-child">
+                      {createChild.isPending ? "Adding..." : "Add Child"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
 
-              <div className="bg-white border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">Family Overview</h3>
-                  <span className="text-xs text-muted-foreground">{children.length} kids</span>
-                </div>
-                <div className="space-y-2 max-h-[100px] overflow-y-auto">
-                  {childrenLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading...</div>
-                  ) : children.length === 0 ? (
-                    <div className="text-center py-4">
-                      <Users className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">No children yet</p>
-                    </div>
-                  ) : (
-                    children.map((child) => (
-                      <div key={child.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">😊</div>
-                          <div>
-                            <div className="text-sm font-medium">{child.name}</div>
-                            <div className="text-xs text-muted-foreground">Level {child.level || 1} • {child.totalPoints} pts</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-semibold text-primary">{child.experiencePoints || 0} XP</div>
+            <Dialog open={isChoreDialogOpen} onOpenChange={setIsChoreDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="default" variant="outline" className="flex items-center gap-2" data-testid="button-add-chore">
+                  <CheckCircle className="w-4 h-4" />
+                  Add Chore
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Chore Template</DialogTitle>
+                </DialogHeader>
+                <Form {...choreForm}>
+                  <form onSubmit={choreForm.handleSubmit((data) => createChoreTemplate.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={choreForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Task Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-chore-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={choreForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-chore-category">
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="household">🧹 Household</SelectItem>
+                              <SelectItem value="exercise">🏃‍♂️ Exercise</SelectItem>
+                              <SelectItem value="educational">📚 Educational</SelectItem>
+                              <SelectItem value="outdoor">🌳 Outdoor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={choreForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="Describe the task..." 
+                              data-testid="input-chore-description" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={choreForm.control}
+                      name="pointValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Points Value</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-chore-points" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={choreForm.control}
+                      name="icon"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Icon</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-chore-icon">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="🧹">🧹 Cleaning</SelectItem>
+                              <SelectItem value="🏃‍♂️">🏃‍♂️ Running</SelectItem>
+                              <SelectItem value="🏋️‍♀️">🏋️‍♀️ Strength</SelectItem>
+                              <SelectItem value="🚴‍♂️">🚴‍♂️ Cycling</SelectItem>
+                              <SelectItem value="🏊‍♀️">🏊‍♀️ Swimming</SelectItem>
+                              <SelectItem value="📚">📚 Reading</SelectItem>
+                              <SelectItem value="✏️">✏️ Writing</SelectItem>
+                              <SelectItem value="🧮">🧮 Math</SelectItem>
+                              <SelectItem value="🌳">🌳 Outdoor</SelectItem>
+                              <SelectItem value="🎯">🎯 Goal</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createChoreTemplate.isPending} data-testid="button-save-chore">
+                      {createChoreTemplate.isPending ? "Creating..." : "Create Chore"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isRewardDialogOpen} onOpenChange={setIsRewardDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="default" variant="outline" className="flex items-center gap-2" data-testid="button-add-reward">
+                  <Gift className="w-4 h-4" />
+                  Add Reward
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Reward</DialogTitle>
+                </DialogHeader>
+                <Form {...rewardForm}>
+                  <form onSubmit={rewardForm.handleSubmit((data) => createReward.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={rewardForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reward Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-reward-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={rewardForm.control}
+                      name="pointsCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Points Cost</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-reward-points" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createReward.isPending} data-testid="button-save-reward">
+                      {createReward.isPending ? "Creating..." : "Create Reward"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
+            {pendingApprovals > 0 && (
+              <Button 
+                size="default" 
+                variant="outline" 
+                className="flex items-center gap-2 bg-orange-50 border-orange-200"
+                onClick={() => setIsApprovalDialogOpen(true)}
+                data-testid="button-review-approvals"
+              >
+                <Activity className="w-4 h-4" />
+                Review Approvals ({pendingApprovals})
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* 4-Column Layout */}
+        <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
+          {/* Column 1: Family Members */}
+          <Card className="flex flex-col overflow-hidden" data-testid="panel-family">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Users className="w-4 h-4" />
+                Family Members
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
+              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
+                {childrenLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                ) : children.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">No children yet</p>
+                  </div>
+                ) : (
+                  children.map((child) => (
+                    <div 
+                      key={child.id} 
+                      className="p-2 bg-muted/50 rounded-lg border border-border hover:border-primary cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedChild(child);
+                        setIsChildDetailsDialogOpen(true);
+                      }}
+                      data-testid={`child-card-${child.id}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">😊</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{child.name}</div>
+                          <div className="text-xs text-muted-foreground">Age {child.age}</div>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div className="flex items-center justify-between text-xs mt-1">
+                        <span className="text-muted-foreground">Level {child.level || 1}</span>
+                        <span className="font-semibold text-primary">{child.totalPoints} pts</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="bg-white border border-border rounded-lg p-3">
-              <div className="flex items-center gap-3">
-                <Dialog open={isChildDialogOpen} onOpenChange={setIsChildDialogOpen}>
+          {/* Column 2: Chores & Tasks */}
+          <Card className="flex flex-col overflow-hidden" data-testid="panel-chores">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CheckCircle className="w-4 h-4" />
+                Chores & Tasks
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
+              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
+                {choreTemplates.filter(t => t.category !== 'exercise').length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">No chore templates yet</p>
+                  </div>
+                ) : (
+                  choreTemplates.filter(t => t.category !== 'exercise').map(chore => (
+                    <div key={chore.id} className="p-2 bg-muted/50 rounded-lg border border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{chore.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{chore.name}</div>
+                          <div className="text-xs text-muted-foreground">{chore.pointValue} pts</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-2 pt-2 border-t">
+                <ParentTaskSuggestions children={children} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Column 3: Learning */}
+          <Card className="flex flex-col overflow-hidden" data-testid="panel-learning">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <GraduationCap className="w-4 h-4" />
+                  Learning
+                </CardTitle>
+                <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="default" className="flex items-center gap-2" data-testid="button-add-child">
-                      <Users className="w-4 h-4" />
-                      Add Child
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" data-testid="button-add-learning-goal">
+                      <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add New Child</DialogTitle>
+                      <DialogTitle>Create Learning Goal</DialogTitle>
                     </DialogHeader>
-                    <Form {...childForm}>
-                      <form onSubmit={childForm.handleSubmit((data) => createChild.mutate(data))} className="space-y-4">
+                    <Form {...learningGoalForm}>
+                      <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
                         <FormField
-                          control={childForm.control}
-                          name="name"
+                          control={learningGoalForm.control}
+                          name="childId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-child-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={childForm.control}
-                          name="age"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Age</FormLabel>
-                              <FormControl>
-                                <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-child-age" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={createChild.isPending} data-testid="button-save-child">
-                          {createChild.isPending ? "Adding..." : "Add Child"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={isChoreDialogOpen} onOpenChange={setIsChoreDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="default" variant="outline" className="flex items-center gap-2" data-testid="button-add-chore">
-                      <CheckCircle className="w-4 h-4" />
-                      Add Chore
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Chore Template</DialogTitle>
-                    </DialogHeader>
-                    <Form {...choreForm}>
-                      <form onSubmit={choreForm.handleSubmit((data) => createChoreTemplate.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={choreForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Task Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-chore-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={choreForm.control}
-                          name="category"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Category</FormLabel>
+                              <FormLabel>Child</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                  <SelectTrigger data-testid="select-chore-category">
-                                    <SelectValue placeholder="Select a category" />
+                                  <SelectTrigger data-testid="select-child">
+                                    <SelectValue placeholder="Select a child" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="household">🧹 Household</SelectItem>
-                                  <SelectItem value="exercise">🏃‍♂️ Exercise</SelectItem>
-                                  <SelectItem value="educational">📚 Educational</SelectItem>
-                                  <SelectItem value="outdoor">🌳 Outdoor</SelectItem>
+                                  {children.map((child) => (
+                                    <SelectItem key={child.id} value={child.id}>
+                                      {child.name} (Age {child.age})
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -358,414 +560,200 @@ export default function ParentDashboard() {
                           )}
                         />
                         <FormField
-                          control={choreForm.control}
-                          name="description"
+                          control={learningGoalForm.control}
+                          name="subject"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Description</FormLabel>
+                              <FormLabel>Subject</FormLabel>
                               <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  value={field.value || ""} 
-                                  placeholder="Describe the task..." 
-                                  data-testid="input-chore-description" 
-                                />
+                                <Input {...field} placeholder="e.g., Ocean Animals, Space, History" data-testid="input-subject" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                         <FormField
-                          control={choreForm.control}
-                          name="pointValue"
+                          control={learningGoalForm.control}
+                          name="difficulty"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Points Value</FormLabel>
-                              <FormControl>
-                                <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-chore-points" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={choreForm.control}
-                          name="icon"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Icon</FormLabel>
+                              <FormLabel>Difficulty Level</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                  <SelectTrigger data-testid="select-chore-icon">
+                                  <SelectTrigger data-testid="select-difficulty">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="🧹">🧹 Cleaning</SelectItem>
-                                  <SelectItem value="🏃‍♂️">🏃‍♂️ Running</SelectItem>
-                                  <SelectItem value="🏋️‍♀️">🏋️‍♀️ Strength</SelectItem>
-                                  <SelectItem value="🚴‍♂️">🚴‍♂️ Cycling</SelectItem>
-                                  <SelectItem value="🏊‍♀️">🏊‍♀️ Swimming</SelectItem>
-                                  <SelectItem value="📚">📚 Reading</SelectItem>
-                                  <SelectItem value="✏️">✏️ Writing</SelectItem>
-                                  <SelectItem value="🧮">🧮 Math</SelectItem>
-                                  <SelectItem value="🌳">🌳 Outdoor</SelectItem>
-                                  <SelectItem value="🎯">🎯 Goal</SelectItem>
+                                  <SelectItem value="easy">Easy</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="hard">Hard</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <Button type="submit" disabled={createChoreTemplate.isPending} data-testid="button-save-chore">
-                          {createChoreTemplate.isPending ? "Creating..." : "Create Chore"}
+                        <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
+                          {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
                         </Button>
                       </form>
                     </Form>
                   </DialogContent>
                 </Dialog>
-
-                <Dialog open={isRewardDialogOpen} onOpenChange={setIsRewardDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="default" variant="outline" className="flex items-center gap-2" data-testid="button-add-reward">
-                      <Gift className="w-4 h-4" />
-                      Add Reward
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Reward</DialogTitle>
-                    </DialogHeader>
-                    <Form {...rewardForm}>
-                      <form onSubmit={rewardForm.handleSubmit((data) => createReward.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={rewardForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Reward Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-reward-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={rewardForm.control}
-                          name="pointsCost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Points Cost</FormLabel>
-                              <FormControl>
-                                <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-reward-points" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={createReward.isPending} data-testid="button-save-reward">
-                          {createReward.isPending ? "Creating..." : "Create Reward"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-
-                {pendingApprovals > 0 && (
-                  <Button 
-                    size="default" 
-                    variant="outline" 
-                    className="flex items-center gap-2 bg-orange-50 border-orange-200"
-                    onClick={() => setIsApprovalDialogOpen(true)}
-                    data-testid="button-review-approvals"
-                  >
-                    <Activity className="w-4 h-4" />
-                    Review Approvals ({pendingApprovals})
-                  </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
+              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
+                {learningGoals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Brain className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">No learning goals yet</p>
+                  </div>
+                ) : (
+                  learningGoals.map((goal) => (
+                    <div key={goal.id} className="bg-muted/50 p-2 rounded-lg border border-border">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm font-medium truncate flex-1">{goal.subject}</div>
+                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {goal.difficulty}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        {goal.targetUnits} activities • {goal.pointsPerUnit} pts
+                      </div>
+                      {(() => {
+                        const goalActivities = learningActivities.filter(activity => activity.goalId === goal.id);
+                        const hasContent = goalActivities.length > 0;
+                        
+                        return (
+                          <div className="space-y-1">
+                            {hasContent && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedGoal(goal);
+                                  setIsContentViewDialogOpen(true);
+                                }}
+                                className="w-full h-7 text-xs"
+                                data-testid="button-view-content"
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                View ({goalActivities.length})
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              onClick={() => generateContent.mutate(goal.id)}
+                              disabled={generateContent.isPending}
+                              className="w-full h-7 text-xs"
+                              data-testid="button-generate-content"
+                            >
+                              <Brain className="w-3 h-3 mr-1" />
+                              {generateContent.isPending ? "Generating..." : hasContent ? "Generate More" : "Generate"}
+                            </Button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))
                 )}
               </div>
-            </div>
-
-            <div className="min-h-0 grid grid-cols-[200px_1fr] gap-3">
-              {/* Panel Index */}
-              <div className="flex flex-col gap-1">
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start" 
-                  onClick={() => document.getElementById('panel-chores')?.scrollIntoView({ behavior: 'smooth' })}
-                  data-testid="link-chores"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Chores & Tasks
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start"
-                  onClick={() => document.getElementById('panel-learning')?.scrollIntoView({ behavior: 'smooth' })}
-                  data-testid="link-learning"
-                >
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Learning Activities
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start"
-                  onClick={() => document.getElementById('panel-exercise')?.scrollIntoView({ behavior: 'smooth' })}
-                  data-testid="link-exercise"
-                >
-                  <Dumbbell className="w-4 h-4 mr-2" />
-                  Exercise Tasks
-                </Button>
+              <div className="mt-2 pt-2 border-t">
+                {children.length > 0 && targetChild ? (
+                  <LearningGoalSuggestions child={targetChild} />
+                ) : (
+                  <div className="text-center py-2" data-testid="learning-goal-suggestions">
+                    <p className="text-xs text-muted-foreground">Add children first</p>
+                  </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Panels */}
-              <div className="flex flex-col gap-3 overflow-y-auto scrollbar-hide">
-                {/* Chores Panel */}
-                <Card id="panel-chores" data-testid="panel-chores" className="scroll-mt-3">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5" />
-                      Chore Templates
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {choreTemplates.filter(t => t.category !== 'exercise').length === 0 ? (
-                      <div className="text-center py-8">
-                        <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No chore templates yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {choreTemplates.filter(t => t.category !== 'exercise').map(chore => (
-                          <div key={chore.id} className="p-3 bg-muted/50 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{chore.icon}</span>
-                                <div>
-                                  <div className="font-medium">{chore.name}</div>
-                                  <div className="text-xs text-muted-foreground">{chore.pointValue} pts</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 mt-3">
-                      <ParentTaskSuggestions children={children} />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Learning Panel */}
-                <Card id="panel-learning" data-testid="panel-learning" className="scroll-mt-3">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="w-5 h-5" />
-                        Learning Goals
-                      </CardTitle>
-                      <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="flex items-center gap-1" data-testid="button-add-learning-goal">
-                            <Plus className="w-3 h-3" />
-                            Add Goal
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Create Learning Goal</DialogTitle>
-                          </DialogHeader>
-                          <Form {...learningGoalForm}>
-                            <form onSubmit={learningGoalForm.handleSubmit((data) => createLearningGoal.mutate(data))} className="space-y-4">
-                              <FormField
-                                control={learningGoalForm.control}
-                                name="childId"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Child</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger data-testid="select-child">
-                                          <SelectValue placeholder="Select a child" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {children.map((child) => (
-                                          <SelectItem key={child.id} value={child.id}>
-                                            {child.name} (Age {child.age})
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={learningGoalForm.control}
-                                name="subject"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Subject</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="e.g., Ocean Animals, Space, History" data-testid="input-subject" />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={learningGoalForm.control}
-                                name="difficulty"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Difficulty Level</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger data-testid="select-difficulty">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="easy">Easy</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="hard">Hard</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <Button type="submit" disabled={createLearningGoal.isPending} data-testid="button-save-learning-goal">
-                                {createLearningGoal.isPending ? "Creating..." : "Create Learning Goal"}
-                              </Button>
-                            </form>
-                          </Form>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {learningGoals.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground">No learning goals yet</p>
+          {/* Column 4: Exercise */}
+          <Card className="flex flex-col overflow-hidden" data-testid="panel-exercise">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Dumbbell className="w-4 h-4" />
+                Exercise
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-3 pt-0">
+              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
+                {choreTemplates.filter(t => t.category === 'exercise').length === 0 ? (
+                  <div className="text-center py-8">
+                    <Dumbbell className="w-8 h-8 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">No exercise tasks yet</p>
+                  </div>
+                ) : (
+                  choreTemplates.filter(t => t.category === 'exercise').map(chore => (
+                    <div key={chore.id} className="p-2 bg-muted/50 rounded-lg border border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{chore.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{chore.name}</div>
+                          <div className="text-xs text-muted-foreground">{chore.pointValue} pts</div>
                         </div>
-                      ) : (
-                        learningGoals.map((goal) => (
-                          <div key={goal.id} className="bg-muted/50 p-3 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="font-medium">{goal.subject}</div>
-                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                                {goal.difficulty}
-                              </span>
-                            </div>
-                            <div className="text-sm text-muted-foreground mb-3">
-                              Target: {goal.targetUnits} activities • {goal.pointsPerUnit} pts each
-                            </div>
-                            {(() => {
-                              const goalActivities = learningActivities.filter(activity => activity.goalId === goal.id);
-                              const hasContent = goalActivities.length > 0;
-                              
-                              return (
-                                <div className="space-y-2">
-                                  {hasContent && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setSelectedGoal(goal);
-                                        setIsContentViewDialogOpen(true);
-                                      }}
-                                      className="w-full"
-                                      data-testid="button-view-content"
-                                    >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View Generated Content ({goalActivities.length})
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    onClick={() => generateContent.mutate(goal.id)}
-                                    disabled={generateContent.isPending}
-                                    className="w-full"
-                                    data-testid="button-generate-content"
-                                  >
-                                    <Brain className="w-4 h-4 mr-2" />
-                                    {generateContent.isPending ? "Generating..." : hasContent ? "Generate More Content" : "Generate Content"}
-                                  </Button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3 mt-3">
-                      {children.length > 0 && targetChild ? (
-                        <LearningGoalSuggestions child={targetChild} />
-                      ) : (
-                        <div className="text-center py-6" data-testid="learning-goal-suggestions">
-                          <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground">Add children to generate learning goal suggestions</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Exercise Panel */}
-                <Card id="panel-exercise" data-testid="panel-exercise" className="scroll-mt-3">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Dumbbell className="w-5 h-5" />
-                      Exercise Tasks
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {choreTemplates.filter(t => t.category === 'exercise').length === 0 ? (
-                      <div className="text-center py-8">
-                        <Dumbbell className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No exercise tasks yet</p>
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {choreTemplates.filter(t => t.category === 'exercise').map(chore => (
-                          <div key={chore.id} className="p-3 bg-muted/50 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{chore.icon}</span>
-                                <div>
-                                  <div className="font-medium">{chore.name}</div>
-                                  <div className="text-xs text-muted-foreground">{chore.pointValue} pts</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-lg p-3 mt-3">
-                      {children.length > 0 && targetChild ? (
-                        <ExerciseSuggestions child={targetChild} />
-                      ) : (
-                        <div className="text-center py-6" data-testid="exercise-suggestions">
-                          <Dumbbell className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground">Add children to generate exercise suggestions</p>
-                        </div>
-                      )}
                     </div>
-                  </CardContent>
-                </Card>
+                  ))
+                )}
               </div>
-            </div>
-          </div>
+              <div className="mt-2 pt-2 border-t">
+                {children.length > 0 && targetChild ? (
+                  <ExerciseSuggestions child={targetChild} />
+                ) : (
+                  <div className="text-center py-2" data-testid="exercise-suggestions">
+                    <p className="text-xs text-muted-foreground">Add children first</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
+      {/* Child Details Dialog */}
+      <Dialog open={isChildDetailsDialogOpen} onOpenChange={setIsChildDetailsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Child Details</DialogTitle>
+          </DialogHeader>
+          {selectedChild && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl">😊</div>
+                <div>
+                  <div className="text-lg font-semibold">{selectedChild.name}</div>
+                  <div className="text-sm text-muted-foreground">Age {selectedChild.age}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Level</div>
+                  <div className="text-xl font-bold text-primary">{selectedChild.level || 1}</div>
+                </div>
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Total Points</div>
+                  <div className="text-xl font-bold text-primary">{selectedChild.totalPoints}</div>
+                </div>
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Experience</div>
+                  <div className="text-xl font-bold text-primary">{selectedChild.experiencePoints || 0} XP</div>
+                </div>
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Badges</div>
+                  <div className="text-xl font-bold text-primary">0</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Content View Dialog */}
       <Dialog open={isContentViewDialogOpen} onOpenChange={setIsContentViewDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -842,6 +830,7 @@ export default function ParentDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Approval Dialog */}
       <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
