@@ -46,6 +46,10 @@ export const children = pgTable("children", {
   level: integer("level").notNull().default(1),
   experiencePoints: integer("experience_points").notNull().default(0),
   currentGoalId: varchar("current_goal_id"),
+  goals: text("goals"), // Child's personal goals and aspirations
+  interests: text("interests"), // Child's hobbies and interests
+  reminderEnabled: boolean("reminder_enabled").notNull().default(true),
+  reminderMethod: varchar("reminder_method").notNull().default("notification"), // notification, email, none
   createdAt: timestamp("created_at").defaultNow(),
 });
 
