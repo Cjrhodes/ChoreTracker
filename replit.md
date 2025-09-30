@@ -209,3 +209,21 @@ The system uses Replit's OpenID Connect (OIDC) authentication service with Passp
   - Confirmed drag-and-drop flow: grab suggestion tile, drop on family member card, task assigned
   - Validated backend security checks prevent cross-family task assignment
   - Toast notifications and UI updates confirmed working correctly
+
+- **COMPLETED: User-Created Items Drag-and-Drop Assignment** - Extended drag-and-drop to all user-added content
+- **Frontend Enhancement:**
+  - All chore/task templates now draggable with visible grip handles
+  - All learning goals draggable with grip handles
+  - All exercise tasks draggable with grip handles
+  - Unified drop handler routes suggestions and user items to appropriate endpoints
+  - Expanded cache invalidation to include child-specific queries and recent-chores
+- **Backend Security:**
+  - Fixed critical vulnerability in POST /api/assigned-chores endpoint
+  - Added dual ownership verification: validates both child and template belong to authenticated parent
+  - POST /api/learning/goals/:id/assign creates copy of goal for target child with ownership checks
+  - Returns 403 for unauthorized access attempts
+- **UX Improvements:**
+  - Learning goal assignment creates a copy for the new child (allows same goal across multiple children)
+  - Chore/exercise assignment creates assigned task for target child
+  - All assignments show success toast and update UI instantly
+  - Prevents cross-family task assignment with proper authorization checks
