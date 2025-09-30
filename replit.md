@@ -183,3 +183,29 @@ The system uses Replit's OpenID Connect (OIDC) authentication service with Passp
   - Direct access to all features without scrolling or navigation clicks
   - Family member cards clickable to view detailed stats (level, XP, points, badges)
   - AI suggestion buttons positioned at bottom of each panel for easy access
+
+- **COMPLETED: Auto-Generated Suggestions with Drag-and-Drop Assignment** - Implemented intelligent suggestion system with intuitive task assignment
+- **Feature Implementation:**
+  - Created `AutoSuggestions` component that auto-generates 3 AI suggestions per category on mount
+  - Auto-generation triggers when no suggestions exist for a child, using useEffect with one-time guard
+  - Generates suggestions for 3 categories: tasks (household chores), learning goals, and exercise activities
+  - Quick add + buttons added to all panel headers for rapid item creation
+- **Drag-and-Drop Interface:**
+  - Suggestion tiles are draggable with visible grip handles (GripVertical icon)
+  - Family member cards serve as drop targets with visual feedback
+  - HTML5 drag API implementation with proper data transfer and preventDefault
+  - Dragging suggestion to child card triggers instant assignment with toast confirmation
+- **Backend Enhancement:**
+  - Created POST /api/ai/suggestions/:id/assign endpoint for secure task assignment
+  - Dual ownership verification: validates both original child and target child belong to authenticated parent
+  - Materializes suggestions into actual chore templates or learning goals upon assignment
+  - Returns appropriate error codes (400, 403, 404, 500) for various failure scenarios
+- **Security & Performance:**
+  - Fixed critical security vulnerability: endpoint now verifies suggestion's original child ownership
+  - Added setTimeout cleanup in useEffect to prevent memory leaks on component unmount
+  - Proper cache invalidation after assignment to update UI across all affected queries
+- **End-to-End Testing:**
+  - Verified auto-generation creates 3 suggestions per category on dashboard load
+  - Confirmed drag-and-drop flow: grab suggestion tile, drop on family member card, task assigned
+  - Validated backend security checks prevent cross-family task assignment
+  - Toast notifications and UI updates confirmed working correctly
