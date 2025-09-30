@@ -12,8 +12,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell, GripVertical } from "lucide-react";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell, GripVertical, Settings } from "lucide-react";
 import { useState } from "react";
+import { Link } from "wouter";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
 import { AutoSuggestions } from "@/components/parent/auto-suggestions";
 
@@ -496,6 +497,18 @@ export default function ParentDashboard() {
                 Review Approvals ({pendingApprovals})
               </Button>
             )}
+            
+            <Link href="/settings">
+              <Button 
+                size="default" 
+                variant="outline" 
+                className="flex items-center gap-2"
+                data-testid="button-settings"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </Button>
+            </Link>
           </div>
         </div>
 

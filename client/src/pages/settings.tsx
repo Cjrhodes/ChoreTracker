@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Save, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, Save, Settings as SettingsIcon, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import type { Child } from "@shared/schema";
 
 export default function Settings() {
@@ -31,14 +32,14 @@ export default function Settings() {
   const [reminderMethod, setReminderMethod] = useState("notification");
 
   // Update local state when child data loads
-  useState(() => {
+  useEffect(() => {
     if (selectedChild) {
       setGoals(selectedChild.goals || "");
       setInterests(selectedChild.interests || "");
       setReminderEnabled(selectedChild.reminderEnabled ?? true);
       setReminderMethod(selectedChild.reminderMethod || "notification");
     }
-  });
+  }, [selectedChild]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: { goals: string; interests: string; reminderEnabled: boolean; reminderMethod: string }) => {
@@ -102,9 +103,17 @@ export default function Settings() {
   return (
     <div className="responsive-container py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <SettingsIcon className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Settings</h1>
+          </div>
+          <Link href="/">
+            <Button variant="outline" size="sm" data-testid="button-back">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
         </div>
 
         <Card className="mb-6">
