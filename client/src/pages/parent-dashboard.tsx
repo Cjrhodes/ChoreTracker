@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
 import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
@@ -201,18 +200,8 @@ export default function ParentDashboard() {
 
   return (
     <div className="responsive-container h-[calc(100dvh-143px)] p-0 overflow-hidden">
-      <Tabs defaultValue="dashboard" className="h-full flex flex-col">
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-12 p-0">
-          <TabsTrigger 
-            value="dashboard" 
-            className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
-            data-testid="tab-dashboard"
-          >
-            Dashboard
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard" className="flex-1 mt-0 overflow-hidden">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-hidden">
           <div className="h-full grid grid-rows-[auto_auto_minmax(0,1fr)] gap-3 p-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-border rounded-lg p-4">
@@ -499,25 +488,48 @@ export default function ParentDashboard() {
             </div>
 
             <div className="min-h-0 grid grid-cols-[200px_1fr] gap-3">
-              <Tabs defaultValue="chores" orientation="vertical" className="h-full">
-                <TabsList className="flex flex-col h-auto w-full gap-1">
-                  <TabsTrigger value="chores" className="w-full justify-start" data-testid="tab-chores">
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Chores & Tasks
-                  </TabsTrigger>
-                  <TabsTrigger value="learning" className="w-full justify-start" data-testid="tab-learning">
-                    <GraduationCap className="w-4 h-4 mr-2" />
-                    Learning Activities
-                  </TabsTrigger>
-                  <TabsTrigger value="exercise" className="w-full justify-start" data-testid="tab-exercise">
-                    <Dumbbell className="w-4 h-4 mr-2" />
-                    Exercise Tasks
-                  </TabsTrigger>
-                </TabsList>
+              {/* Panel Index */}
+              <div className="flex flex-col gap-1">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start" 
+                  onClick={() => document.getElementById('panel-chores')?.scrollIntoView({ behavior: 'smooth' })}
+                  data-testid="link-chores"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Chores & Tasks
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => document.getElementById('panel-learning')?.scrollIntoView({ behavior: 'smooth' })}
+                  data-testid="link-learning"
+                >
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Learning Activities
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => document.getElementById('panel-exercise')?.scrollIntoView({ behavior: 'smooth' })}
+                  data-testid="link-exercise"
+                >
+                  <Dumbbell className="w-4 h-4 mr-2" />
+                  Exercise Tasks
+                </Button>
+              </div>
 
-                <TabsContent value="chores" className="h-full mt-0 ml-3 flex flex-col gap-3">
-                  <div className="bg-white border border-border rounded-lg p-4 flex-1 overflow-y-auto">
-                    <h3 className="text-lg font-semibold mb-4">Chore Templates</h3>
+              {/* Panels */}
+              <div className="flex flex-col gap-3 overflow-y-auto">
+                {/* Chores Panel */}
+                <Card id="panel-chores" data-testid="panel-chores" className="scroll-mt-3">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5" />
+                      Chore Templates
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     {choreTemplates.filter(t => t.category !== 'exercise').length === 0 ? (
                       <div className="text-center py-8">
                         <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
@@ -540,19 +552,20 @@ export default function ParentDashboard() {
                         ))}
                       </div>
                     )}
-                  </div>
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
-                    <ParentTaskSuggestions children={children} />
-                  </div>
-                </TabsContent>
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 mt-3">
+                      <ParentTaskSuggestions children={children} />
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <TabsContent value="learning" className="h-full mt-0 ml-3 flex flex-col gap-3">
-                  <div className="bg-white border border-border rounded-lg p-4 flex-1 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                {/* Learning Panel */}
+                <Card id="panel-learning" data-testid="panel-learning" className="scroll-mt-3">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
                         <GraduationCap className="w-5 h-5" />
                         Learning Goals
-                      </h3>
+                      </CardTitle>
                       <Dialog open={isLearningGoalDialogOpen} onOpenChange={setIsLearningGoalDialogOpen}>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" className="flex items-center gap-1" data-testid="button-add-learning-goal">
@@ -633,6 +646,8 @@ export default function ParentDashboard() {
                         </DialogContent>
                       </Dialog>
                     </div>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-3">
                       {learningGoals.length === 0 ? (
                         <div className="text-center py-8">
@@ -689,22 +704,28 @@ export default function ParentDashboard() {
                         ))
                       )}
                     </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3">
-                    {children.length > 0 && targetChild ? (
-                      <LearningGoalSuggestions child={targetChild} />
-                    ) : (
-                      <div className="text-center py-6" data-testid="learning-goal-suggestions">
-                        <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Add children to generate learning goal suggestions</p>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
+                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3 mt-3">
+                      {children.length > 0 && targetChild ? (
+                        <LearningGoalSuggestions child={targetChild} />
+                      ) : (
+                        <div className="text-center py-6" data-testid="learning-goal-suggestions">
+                          <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">Add children to generate learning goal suggestions</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <TabsContent value="exercise" className="h-full mt-0 ml-3 flex flex-col gap-3">
-                  <div className="bg-white border border-border rounded-lg p-4 flex-1 overflow-y-auto">
-                    <h3 className="text-lg font-semibold mb-4">Exercise Tasks</h3>
+                {/* Exercise Panel */}
+                <Card id="panel-exercise" data-testid="panel-exercise" className="scroll-mt-3">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Dumbbell className="w-5 h-5" />
+                      Exercise Tasks
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     {choreTemplates.filter(t => t.category === 'exercise').length === 0 ? (
                       <div className="text-center py-8">
                         <Dumbbell className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
@@ -727,23 +748,23 @@ export default function ParentDashboard() {
                         ))}
                       </div>
                     )}
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-lg p-3">
-                    {children.length > 0 && targetChild ? (
-                      <ExerciseSuggestions child={targetChild} />
-                    ) : (
-                      <div className="text-center py-6" data-testid="exercise-suggestions">
-                        <Dumbbell className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Add children to generate exercise suggestions</p>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+                    <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-lg p-3 mt-3">
+                      {children.length > 0 && targetChild ? (
+                        <ExerciseSuggestions child={targetChild} />
+                      ) : (
+                        <div className="text-center py-6" data-testid="exercise-suggestions">
+                          <Dumbbell className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">Add children to generate exercise suggestions</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <Dialog open={isContentViewDialogOpen} onOpenChange={setIsContentViewDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
