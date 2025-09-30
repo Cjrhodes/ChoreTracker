@@ -176,6 +176,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Request body:", req.body);
       const choreData = insertAssignedChoreSchema.parse(req.body);
+      const parentId = req.user.claims.sub;
+      
+      // Verify child belongs to authenticated parent
+      const child = await storage.getChild(choreData.childId);
+      if (!child || child.parentId !== parentId) {
+        return res.status(403).json({ message: "Access denied to child" });
+      }
+      
+      // Verify chore template belongs to authenticated parent
+      const template = await storage.getChoreTemplate(choreData.choreTemplateId);
+      if (!template || template.parentId !== parentId) {
+        return res.status(403).json({ message: "Access denied to chore template" });
+      }
+      
       const chore = await storage.assignChore(choreData);
       res.status(201).json(chore);
     } catch (error) {

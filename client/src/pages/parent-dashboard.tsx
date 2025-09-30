@@ -215,10 +215,17 @@ export default function ParentDashboard() {
         return apiRequest('POST', `/api/learning/goals/${id}/assign`, { childId });
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Invalidate parent-level queries
       queryClient.invalidateQueries({ queryKey: ['/api/assigned-chores'] });
       queryClient.invalidateQueries({ queryKey: ['/api/children'] });
       queryClient.invalidateQueries({ queryKey: ['/api/learning/goals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recent-chores'] });
+      
+      // Invalidate child-specific queries
+      queryClient.invalidateQueries({ queryKey: ['/api/children', variables.childId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/learning-goals/child', variables.childId] });
+      
       toast({
         title: "Task Assigned! ✅",
         description: "The task has been assigned to the family member.",
