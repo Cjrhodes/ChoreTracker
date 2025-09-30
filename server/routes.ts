@@ -1039,9 +1039,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      const parentId = req.user.claims.sub;
+
+      // Verify the suggestion's original child belongs to the authenticated user
+      const originalChild = await storage.getChild(suggestion.childId);
+      if (!originalChild || originalChild.parentId !== parentId) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+
       // Verify the target child belongs to the authenticated user
       const targetChild = await storage.getChild(childId);
-      const parentId = req.user.claims.sub;
       if (!targetChild || targetChild.parentId !== parentId) {
         res.status(403).json({ message: "Access denied" });
         return;
