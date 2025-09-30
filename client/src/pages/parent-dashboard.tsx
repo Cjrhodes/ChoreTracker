@@ -12,7 +12,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye } from "lucide-react";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { ParentTaskSuggestions } from "@/components/parent/task-suggestions";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
@@ -498,9 +499,53 @@ export default function ParentDashboard() {
           </div>
         </div>
 
-        {/* AI Task Suggestions Panel */}
-        <div className="max-h-[400px] overflow-y-auto">
-          <ParentTaskSuggestions children={children} />
+        {/* Combined AI Suggestions Panel */}
+        <div className="bg-white border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-yellow-500" />
+              AI Suggestions & Ideas
+            </h3>
+            {children.length > 0 && (
+              <Select 
+                value={selectedChildForSuggestions || children[0]?.id} 
+                onValueChange={setSelectedChildForSuggestions}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select child" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      {child.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <Tabs defaultValue="tasks" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="tasks">Task Ideas</TabsTrigger>
+              <TabsTrigger value="learning">Learning Goals</TabsTrigger>
+              <TabsTrigger value="exercise">Exercise Ideas</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tasks" className="max-h-[350px] overflow-y-auto">
+              <ParentTaskSuggestions children={children} />
+            </TabsContent>
+            <TabsContent value="learning" className="max-h-[350px] overflow-y-auto">
+              {children.length > 0 && (() => {
+                const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
+                return <LearningGoalSuggestions child={targetChild} />;
+              })()}
+            </TabsContent>
+            <TabsContent value="exercise" className="max-h-[350px] overflow-y-auto">
+              {children.length > 0 && (() => {
+                const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
+                return <ExerciseSuggestions child={targetChild} />;
+              })()}
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Learning Goals Panel - Larger Rectangle */}
@@ -653,43 +698,6 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* Row 4: AI Suggestions for Learning Goals and Exercise */}
-      {children.length > 0 && (() => {
-        const targetChild = children.find(c => c.id === selectedChildForSuggestions) || children[0];
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <h3 className="text-lg font-semibold">AI Suggestions</h3>
-              <Select 
-                value={selectedChildForSuggestions || children[0]?.id} 
-                onValueChange={setSelectedChildForSuggestions}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select child" />
-                </SelectTrigger>
-                <SelectContent>
-                  {children.map((child) => (
-                    <SelectItem key={child.id} value={child.id}>
-                      {child.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-h-0 grid grid-cols-2 gap-4">
-              {/* AI Learning Goal Suggestions */}
-              <div>
-                <LearningGoalSuggestions child={targetChild} />
-              </div>
-
-              {/* AI Exercise Suggestions */}
-              <div>
-                <ExerciseSuggestions child={targetChild} />
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Content Viewing Dialog */}
       <Dialog open={isContentViewDialogOpen} onOpenChange={setIsContentViewDialogOpen}>
