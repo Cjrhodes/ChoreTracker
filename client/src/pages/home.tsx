@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import InterfaceToggle from "@/components/interface-toggle";
-import ChildDashboard from "@/pages/child-dashboard";
+import ChildDashboard from "@/pages/child-dashboard-new";
 import ParentDashboard from "@/pages/parent-dashboard";
 
 export default function Home() {

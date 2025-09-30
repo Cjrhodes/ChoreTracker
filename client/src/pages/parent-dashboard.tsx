@@ -3,9 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -90,7 +91,7 @@ export default function ParentDashboard() {
 
   const choreForm = useForm<InsertChoreTemplate>({
     resolver: zodResolver(insertChoreTemplateSchema),
-    defaultValues: { name: "", description: "", pointValue: 10, icon: "🧹", category: "household", frequency: "daily", parentId: "" },
+    defaultValues: { name: "", description: "", pointValue: 10, icon: "🧹", category: "household", frequency: "daily", requiresImage: false, parentId: "" },
   });
 
   const rewardForm = useForm<InsertReward>({
@@ -427,6 +428,29 @@ export default function ParentDashboard() {
                             </SelectContent>
                           </Select>
                           <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={choreForm.control}
+                      name="requiresImage"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-requires-image"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Require Photo Proof 📸
+                            </FormLabel>
+                            <FormDescription>
+                              Child must upload a photo to complete this task
+                            </FormDescription>
+                          </div>
                         </FormItem>
                       )}
                     />

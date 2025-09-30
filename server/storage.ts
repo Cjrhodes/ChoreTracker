@@ -69,7 +69,7 @@ export interface IStorage {
   getAssignedChoresByChild(childId: string): Promise<(AssignedChore & { choreTemplate: ChoreTemplate })[]>;
   getAssignedChore(choreId: string): Promise<AssignedChore | undefined>;
   assignChore(chore: InsertAssignedChore): Promise<AssignedChore>;
-  completeChore(choreId: string): Promise<void>;
+  completeChore(choreId: string, completionImageUrl?: string): Promise<void>;
   approveChore(choreId: string, approverId: string, pointsAwarded: number): Promise<void>;
   deleteAssignedChore(choreId: string): Promise<void>;
 
@@ -294,6 +294,8 @@ export class DatabaseStorage implements IStorage {
         approvedAt: assignedChores.approvedAt,
         approvedBy: assignedChores.approvedBy,
         pointsAwarded: assignedChores.pointsAwarded,
+        requiresImage: assignedChores.requiresImage,
+        completionImageUrl: assignedChores.completionImageUrl,
         createdAt: assignedChores.createdAt,
         choreTemplate: choreTemplates,
       })
@@ -313,10 +315,13 @@ export class DatabaseStorage implements IStorage {
     return newChore;
   }
 
-  async completeChore(choreId: string): Promise<void> {
+  async completeChore(choreId: string, completionImageUrl?: string): Promise<void> {
     await db
       .update(assignedChores)
-      .set({ completedAt: new Date() })
+      .set({ 
+        completedAt: new Date(),
+        ...(completionImageUrl && { completionImageUrl })
+      })
       .where(eq(assignedChores.id, choreId));
   }
 

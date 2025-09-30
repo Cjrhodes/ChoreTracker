@@ -219,7 +219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to chore template" });
       }
       
-      const chore = await storage.assignChore(choreData);
+      // Copy requiresImage flag from template
+      const choreWithImageFlag = {
+        ...choreData,
+        requiresImage: template.requiresImage
+      };
+      
+      const chore = await storage.assignChore(choreWithImageFlag);
       res.status(201).json(chore);
     } catch (error) {
       console.error("Error assigning chore:", error);
@@ -262,12 +268,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to assign this task" });
       }
       
-      // Create the assigned chore
+      // Create the assigned chore with requiresImage flag from template
       const today = new Date().toISOString().split('T')[0];
       const choreData = insertAssignedChoreSchema.parse({
         childId,
         choreTemplateId,
-        assignedDate: today
+        assignedDate: today,
+        requiresImage: template.requiresImage
       });
       
       const chore = await storage.assignChore(choreData);
@@ -281,7 +288,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/assigned-chores/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      await storage.completeChore(id);
+      const { completionImageUrl } = req.body;
+      
+      // Get the chore to verify ownership and check if image is required
+      const chore = await storage.getAssignedChore(id);
+      if (!chore) {
+        res.status(404).json({ message: "Chore not found" });
+        return;
+      }
+      
+      // Verify child belongs to authenticated user
+      const child = await storage.getChild(chore.childId);
+      const userId = req.user.claims.sub;
+      if (!child || child.parentId !== userId) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+      
+      // Check if image is required but not provided
+      if (chore.requiresImage && !completionImageUrl) {
+        res.status(400).json({ message: "This task requires an image for completion" });
+        return;
+      }
+      
+      await storage.completeChore(id, completionImageUrl);
       res.json({ message: "Chore marked as completed" });
     } catch (error) {
       console.error("Error completing chore:", error);

@@ -62,6 +62,7 @@ export const choreTemplates = pgTable("chore_templates", {
   icon: varchar("icon").notNull().default("🧹"),
   category: varchar("category").notNull().default("household"), // household, exercise, educational, outdoor
   frequency: varchar("frequency").notNull().default("daily"), // daily, weekly, custom
+  requiresImage: boolean("requires_image").notNull().default(false), // Whether task requires image proof of completion
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -74,6 +75,8 @@ export const assignedChores = pgTable("assigned_chores", {
   approvedAt: timestamp("approved_at"),
   approvedBy: varchar("approved_by").references(() => users.id),
   pointsAwarded: integer("points_awarded"),
+  requiresImage: boolean("requires_image").notNull().default(false), // Copied from template when assigned
+  completionImageUrl: text("completion_image_url"), // Base64 or URL of completion proof image
   createdAt: timestamp("created_at").defaultNow(),
 });
 
