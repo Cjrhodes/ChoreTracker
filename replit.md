@@ -1,6 +1,6 @@
 # Overview
 
-ChoreChamps is a family chore management application designed to gamify household tasks for children while providing parents with organizational tools. The system allows parents to create and assign chores to their children, who can complete tasks to earn points and badges. Children can set goals for rewards and track their progress through an engaging, game-like interface.
+TaskTitan is a family chore management application designed to gamify household tasks for children while providing parents with organizational tools. The system allows parents to create and assign chores to their children, who can complete tasks to earn points and badges. Children can set goals for rewards and track their progress through an engaging, game-like interface.
 
 # User Preferences
 
@@ -139,7 +139,7 @@ The system uses Replit's OpenID Connect (OIDC) authentication service with Passp
   - Uses h-[calc(100dvh-143px)] to account for sticky header and ensure perfect viewport fit
   - Internal scrolling only in content areas (no page-level scrolling)
 - All key functionality visible in one view without scrolling requirement **ACHIEVED**
-- Created custom ChoreChamps logo with golden trophy design and integrated across app
+- Created custom TaskTitan logo with golden trophy design and integrated across app
 - Confirmed Get Started button functionality and authentication flow
 
 **September 29, 2025:**

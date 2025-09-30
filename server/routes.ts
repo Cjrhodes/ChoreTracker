@@ -1165,8 +1165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Send welcome message based on party type
             const welcomeMessage = partyType === 'child' 
-              ? `Hey! I'm your ChoreChamp Agent. What's going on today? 😊`
-              : `Welcome! I'm your ChoreChamp Agent, ready to help you manage your family's activities. How can I assist you today?`;
+              ? `Hey! I'm your TaskTitan Agent. What's going on today? 😊`
+              : `Welcome! I'm your TaskTitan Agent, ready to help you manage your family's activities. How can I assist you today?`;
             
             ws.send(JSON.stringify({
               type: 'agent_message',

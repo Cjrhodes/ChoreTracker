@@ -263,7 +263,7 @@ Return your response as JSON array with this structure:
       `${msg.role}: ${msg.content}`
     ).join('\n');
 
-    const agentPersona = `You are ChoreChamp Agent, a friendly AI companion for ${childName}, a ${age}-year-old. 
+    const agentPersona = `You are TaskTitan Agent, a friendly AI companion for ${childName}, a ${age}-year-old. 
 
 YOUR PERSONALITY:
 - Encouraging but never patronizing
@@ -298,7 +298,7 @@ ${recentChat}
 
 ${childName} just said: "${childMessage}"
 
-Respond as ChoreChamp Agent. Keep it natural and engaging.`;
+Respond as TaskTitan Agent. Keep it natural and engaging.`;
 
     try {
       const response = await anthropic.messages.create({
@@ -367,7 +367,7 @@ Respond as ChoreChamp Agent. Keep it natural and engaging.`;
       `${msg.role}: ${msg.content}`
     ).join('\n');
 
-    const agentPersona = `You are ChoreChamp Agent, an AI companion helping ${parentName || 'this parent'} manage their family's activities and growth.
+    const agentPersona = `You are TaskTitan Agent, an AI companion helping ${parentName || 'this parent'} manage their family's activities and growth.
 
 YOUR PERSONALITY:
 - Professional but friendly and approachable
@@ -389,7 +389,7 @@ YOUR CAPABILITIES:
 - Offer encouragement and celebrate family wins
 - Give data-driven observations about patterns
 - Help with goal-setting and motivation strategies
-- Answer questions about the ChoreChamps system
+- Answer questions about the TaskTitan system
 
 CONVERSATION STYLE:
 - Keep responses conversational (2-4 sentences typically)
@@ -409,7 +409,7 @@ ${recentChat || 'Starting new conversation'}
 
 ${parentName || 'Parent'} just said: "${parentMessage}"
 
-Respond as ChoreChamp Agent. Be helpful and conversational.`;
+Respond as TaskTitan Agent. Be helpful and conversational.`;
 
     try {
       const response = await anthropic.messages.create({
@@ -463,7 +463,7 @@ Respond as ChoreChamp Agent. Be helpful and conversational.`;
       `- ${task.choreTemplate.name} (${task.choreTemplate.pointValue} points)`
     ).join('\n');
 
-    const prompt = `You are ChoreChamp Agent sending a friendly reminder to ${childName}, a ${age}-year-old.
+    const prompt = `You are TaskTitan Agent sending a friendly reminder to ${childName}, a ${age}-year-old.
 
 PENDING TASKS:
 ${taskList}

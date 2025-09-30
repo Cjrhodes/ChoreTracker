@@ -12,7 +12,7 @@ export default function Landing() {
             </div>
             
             <h1 className="text-3xl font-bold mb-3" style={{ color: '#CCDC38' }}>
-              Welcome to ChoreChamps!
+              Welcome to TaskTitan!
             </h1>
             
             <p className="text-muted-foreground mb-6">
