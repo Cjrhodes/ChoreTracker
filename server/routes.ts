@@ -958,22 +958,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const kind of kinds) {
         let generatedContent;
         
+        // Convert interests string to array if needed, use child's interests as fallback
+        const interests = params.interests || (child.interests ? [child.interests] : undefined);
+        const goals = child.goals || undefined;
+        const childInterests = child.interests || undefined;
+        
         if (kind === 'learning_goal') {
           generatedContent = await aiContentService.generateGoalSuggestions(
             child.age,
-            params.interests,
+            interests,
+            goals,
             params.difficulty || 'medium'
           );
         } else if (kind === 'task') {
           generatedContent = await aiContentService.generateTaskSuggestions(
             child.age,
             params.categories || ['educational', 'fitness', 'creative'],
-            params.timeboxMinutes || 20
+            params.timeboxMinutes || 20,
+            childInterests,
+            goals
           );
         } else if (kind === 'exercise') {
           generatedContent = await aiContentService.generateExercisePlan(
             child.age,
-            params.fitnessLevel || 'beginner'
+            params.fitnessLevel || 'beginner',
+            childInterests
           );
         }
 

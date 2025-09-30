@@ -494,6 +494,7 @@ Keep it to 1-2 sentences max.`;
   async generateGoalSuggestions(
     age: number, 
     interests?: string[], 
+    goals?: string,
     difficulty: 'easy' | 'medium' | 'hard' = 'medium'
   ): Promise<Array<{
     subject: string;
@@ -501,11 +502,13 @@ Keep it to 1-2 sentences max.`;
     suggestedTargetUnits: number;
     pointsPerUnit: number;
   }>> {
-    const interestsText = interests?.length ? `Interests: ${interests.join(', ')}` : '';
+    const interestsText = interests?.length ? `Child's Interests: ${interests.join(', ')}` : '';
+    const goalsText = goals ? `Child's Goals & Aspirations: ${goals}` : '';
     
     const prompt = `Generate 3 age-appropriate learning goals for a ${age}-year-old tween.
 
 ${interestsText}
+${goalsText}
 Difficulty: ${difficulty}
 
 For each goal, provide:
@@ -515,6 +518,7 @@ For each goal, provide:
 - pointsPerUnit: Points per activity (10-25 based on difficulty)
 
 Focus on: STEM, creative skills, life skills, languages, or hobbies that build confidence and independence.
+${goals ? 'Align suggestions with their stated goals and aspirations whenever possible.' : ''}
 
 Return as JSON array.`;
 
@@ -549,7 +553,9 @@ Return as JSON array.`;
   async generateTaskSuggestions(
     age: number,
     categories: string[] = ['educational', 'fitness', 'creative'],
-    timeboxMinutes: number = 20
+    timeboxMinutes: number = 20,
+    interests?: string,
+    goals?: string
   ): Promise<Array<{
     title: string;
     description: string;
@@ -558,11 +564,15 @@ Return as JSON array.`;
     frequency: string;
   }>> {
     const categoriesText = categories.join(', ');
+    const interestsText = interests ? `Child's Interests: ${interests}` : '';
+    const goalsText = goals ? `Child's Goals: ${goals}` : '';
     
     const prompt = `Generate 4 engaging tasks for a ${age}-year-old that take about ${timeboxMinutes} minutes each.
 
 Categories: ${categoriesText}
 Age: ${age} years
+${interestsText}
+${goalsText}
 
 For each task, provide:
 - title: Clear, actionable task name
@@ -572,6 +582,7 @@ For each task, provide:
 - frequency: "daily", "weekly", or "custom"
 
 Make tasks fun, achievable, and age-appropriate. Mix easy wins with slight challenges.
+${interests || goals ? 'Personalize tasks based on their interests and goals when possible.' : ''}
 
 Return as JSON array.`;
 
@@ -606,7 +617,8 @@ Return as JSON array.`;
 
   async generateExercisePlan(
     age: number,
-    fitnessLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
+    fitnessLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
+    interests?: string
   ): Promise<Array<{
     title: string;
     description: string;
@@ -615,7 +627,11 @@ Return as JSON array.`;
     pointValue: number;
     safetyNotes: string;
   }>> {
+    const interestsText = interests ? `Child's Interests: ${interests}` : '';
+    
     const prompt = `Generate 3 safe, fun exercise activities for a ${age}-year-old at ${fitnessLevel} fitness level.
+
+${interestsText}
 
 Requirements:
 - No dangerous equipment
@@ -630,6 +646,8 @@ For each exercise, provide:
 - equipment: "none" or simple items like "towel", "water bottle"
 - pointValue: Points earned (10-25)
 - safetyNotes: Important safety tip (1 sentence)
+
+${interests ? 'Try to align exercises with their interests when possible (e.g., dance moves for music lovers, sports drills for athletes).' : ''}
 
 Return as JSON array.`;
 
