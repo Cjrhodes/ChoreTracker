@@ -1307,7 +1307,7 @@ export default function ParentDashboard() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {recentChores
+            {allChildrenChores
               .filter(chore => chore.completedAt && !chore.approvedAt)
               .filter(chore => !approvalFilterChildId || chore.childId === approvalFilterChildId)
               .map((chore) => (
