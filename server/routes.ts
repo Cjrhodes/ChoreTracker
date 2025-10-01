@@ -1622,6 +1622,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Scheduled Tasks routes
+  app.get('/api/scheduled-tasks/:childId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { childId } = req.params;
+      const tasks = await storage.getScheduledTasksByChild(childId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching scheduled tasks:", error);
+      res.status(500).json({ message: "Failed to fetch scheduled tasks" });
+    }
+  });
+
+  app.post('/api/scheduled-tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const task = await storage.createScheduledTask(req.body);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating scheduled task:", error);
+      res.status(500).json({ message: "Failed to create scheduled task" });
+    }
+  });
+
+  app.patch('/api/scheduled-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { completed } = req.body;
+      await storage.updateScheduledTaskCompletion(id, completed);
+      res.json({ message: "Task updated successfully" });
+    } catch (error) {
+      console.error("Error updating scheduled task:", error);
+      res.status(500).json({ message: "Failed to update scheduled task" });
+    }
+  });
+
+  app.delete('/api/scheduled-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteScheduledTask(id);
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting scheduled task:", error);
+      res.status(500).json({ message: "Failed to delete scheduled task" });
+    }
+  });
+
   // Start reminder system (check every 30 minutes)
   const reminderInterval = setInterval(checkAndSendReminders, 30 * 60 * 1000);
   

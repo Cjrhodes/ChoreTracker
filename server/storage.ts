@@ -13,6 +13,7 @@ import {
   aiMessages,
   aiSuggestions,
   appMessages,
+  scheduledTasks,
   type User,
   type UpsertUser,
   type Child,
@@ -41,6 +42,8 @@ import {
   type InsertAiSuggestion,
   type AppMessage,
   type InsertAppMessage,
+  type ScheduledTask,
+  type InsertScheduledTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -147,6 +150,13 @@ export interface IStorage {
   updateSuggestionStatus(suggestionId: string, status: 'accepted' | 'dismissed'): Promise<void>;
   acceptSuggestion(suggestionId: string): Promise<AiSuggestion>;
   dismissSuggestion(suggestionId: string): Promise<AiSuggestion>;
+
+  // Scheduled Tasks operations
+  getScheduledTasksByChild(childId: string): Promise<ScheduledTask[]>;
+  getScheduledTask(taskId: string): Promise<ScheduledTask | undefined>;
+  createScheduledTask(task: InsertScheduledTask): Promise<ScheduledTask>;
+  updateScheduledTaskCompletion(taskId: string, completed: boolean): Promise<void>;
+  deleteScheduledTask(taskId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -990,6 +1000,44 @@ export class DatabaseStorage implements IStorage {
       .from(aiSuggestions)
       .where(eq(aiSuggestions.id, suggestionId));
     return result;
+  }
+
+  // Scheduled Tasks operations
+  async getScheduledTasksByChild(childId: string): Promise<ScheduledTask[]> {
+    return await db
+      .select()
+      .from(scheduledTasks)
+      .where(eq(scheduledTasks.childId, childId))
+      .orderBy(scheduledTasks.scheduledDate);
+  }
+
+  async getScheduledTask(taskId: string): Promise<ScheduledTask | undefined> {
+    const [task] = await db
+      .select()
+      .from(scheduledTasks)
+      .where(eq(scheduledTasks.id, taskId));
+    return task;
+  }
+
+  async createScheduledTask(task: InsertScheduledTask): Promise<ScheduledTask> {
+    const [result] = await db
+      .insert(scheduledTasks)
+      .values(task)
+      .returning();
+    return result;
+  }
+
+  async updateScheduledTaskCompletion(taskId: string, completed: boolean): Promise<void> {
+    await db
+      .update(scheduledTasks)
+      .set({ completed })
+      .where(eq(scheduledTasks.id, taskId));
+  }
+
+  async deleteScheduledTask(taskId: string): Promise<void> {
+    await db
+      .delete(scheduledTasks)
+      .where(eq(scheduledTasks.id, taskId));
   }
 }
 

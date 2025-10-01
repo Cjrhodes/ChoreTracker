@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CheckCircle, Image as ImageIcon, Trophy, Clock, CheckCheck, Plus } from "lucide-react";
+import { CheckCircle, Image as ImageIcon, Trophy, Clock, CheckCheck, Plus, Calendar as CalendarIcon, List } from "lucide-react";
 import type { Child, AssignedChore, ChoreTemplate } from "@shared/schema";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CalendarView } from "@/components/child/calendar-view";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
 
@@ -154,22 +156,38 @@ export default function ChildDashboard() {
 
   return (
     <div className="flex h-[calc(100vh-72px)]">
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 flex flex-col">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold">{child.name}'s Tasks</h1>
-            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              <span className="font-bold">{child.totalPoints} pts</span>
-              <span className="text-muted-foreground">• Level {child.level}</span>
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold">{child.name}'s Dashboard</h1>
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                <span className="font-bold">{child.totalPoints} pts</span>
+                <span className="text-muted-foreground">• Level {child.level}</span>
+              </div>
             </div>
           </div>
-          <p className="text-muted-foreground mt-2">Drag tasks to move them between columns</p>
         </div>
 
-        {/* Three Column Layout */}
-        <div className="grid grid-cols-3 gap-4 h-[calc(100%-100px)]">
+        <Tabs defaultValue="tasks" className="flex-1 flex flex-col">
+          <TabsList className="mb-4">
+            <TabsTrigger value="tasks" data-testid="tab-tasks">
+              <List className="h-4 w-4 mr-2" />
+              My Tasks
+            </TabsTrigger>
+            <TabsTrigger value="calendar" data-testid="tab-calendar">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Calendar
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tasks" className="flex-1 flex flex-col mt-0">
+            <p className="text-muted-foreground mb-4">Drag tasks to move them between columns</p>
+            
+            {/* Three Column Layout */}
+            <div className="grid grid-cols-3 gap-4 flex-1">
           {/* Available Tasks Column */}
           <div 
             className="flex flex-col bg-card rounded-lg border-2 border-border"
@@ -327,6 +345,12 @@ export default function ChildDashboard() {
             </div>
           </div>
         </div>
+          </TabsContent>
+
+          <TabsContent value="calendar" className="flex-1 mt-0">
+            <CalendarView childId={child.id} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Image Upload Dialog */}
