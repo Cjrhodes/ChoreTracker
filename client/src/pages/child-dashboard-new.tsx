@@ -171,6 +171,15 @@ export default function ChildDashboard() {
           </div>
         </div>
 
+        {/* AI Chat Widget */}
+        <div className="mb-4">
+          <UniversalChatWidget 
+            partyType="child"
+            partyId={child.id} 
+            userName={child.name}
+          />
+        </div>
+
         <Tabs defaultValue="tasks" className="flex-1 flex flex-col">
           <TabsList className="mb-4">
             <TabsTrigger value="tasks" data-testid="tab-tasks">
