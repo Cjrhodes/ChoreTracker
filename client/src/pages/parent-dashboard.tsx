@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,6 +82,12 @@ export default function ParentDashboard() {
 
   const { data: recentChores = [] } = useQuery<ChoreWithTemplate[]>({
     queryKey: ["/api/recent-chores"],
+    enabled: !!user && children.length > 0,
+  });
+
+  // Get all assigned chores for all children to properly check attention items
+  const { data: allChildrenChores = [] } = useQuery<ChoreWithTemplate[]>({
+    queryKey: ["/api/parent-children-chores"],
     enabled: !!user && children.length > 0,
   });
 
@@ -177,6 +184,7 @@ export default function ParentDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/recent-chores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parent-children-chores"] });
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
       setIsApprovalDialogOpen(false);
       toast({ title: "Chore Approved! ✅", description: "Points have been awarded to the child." });
@@ -223,6 +231,7 @@ export default function ParentDashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/children'] });
       queryClient.invalidateQueries({ queryKey: ['/api/learning/goals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/recent-chores'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/parent-children-chores'] });
       
       // Invalidate child-specific queries
       queryClient.invalidateQueries({ queryKey: ['/api/children', variables.childId] });
@@ -534,6 +543,95 @@ export default function ParentDashboard() {
               </Button>
             </Link>
           </div>
+        </div>
+
+        {/* Attention Summary & Points System */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Attention Summary */}
+          <Card data-testid="card-attention-summary">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-500" />
+                Items Needing Attention
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {children.length === 0 && (
+                <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span>No children added yet - add a child to get started</span>
+                </div>
+              )}
+              {children.map(child => {
+                const childChores = allChildrenChores.filter(c => c.childId === child.id);
+                const hasNoAssignments = childChores.length === 0;
+                const pendingApproval = childChores.filter(c => c.completedAt && !c.approvedAt).length;
+                
+                if (!hasNoAssignments && pendingApproval === 0) return null;
+                
+                return (
+                  <div key={child.id} className="text-sm bg-orange-50 p-2 rounded">
+                    <span className="font-medium">{child.name}</span>
+                    {hasNoAssignments && (
+                      <div className="text-orange-600 flex items-center gap-1 mt-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Has zero task assignments
+                      </div>
+                    )}
+                    {pendingApproval > 0 && (
+                      <div className="text-orange-600 flex items-center gap-1 mt-1">
+                        <Star className="w-3 h-3" />
+                        {pendingApproval} completed {pendingApproval === 1 ? 'task' : 'tasks'} waiting for approval
+                      </div>
+                    )}
+                  </div>
+                );
+              }).filter(Boolean)}
+              {children.length > 0 && children.every(child => {
+                const childChores = allChildrenChores.filter(c => c.childId === child.id);
+                const hasAssignments = childChores.length > 0;
+                const pendingApproval = childChores.filter(c => c.completedAt && !c.approvedAt).length;
+                return hasAssignments && pendingApproval === 0;
+              }) && (
+                <div className="text-sm text-green-600 bg-green-50 p-2 rounded flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>All caught up! Everything looks good.</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Points System Explanation */}
+          <Card data-testid="card-points-system">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500" />
+                Points Value System
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-muted-foreground">Points help children understand the value of their effort and track progress toward rewards.</p>
+              <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold text-primary min-w-[60px]">5-10 pts</span>
+                  <span className="text-muted-foreground">Quick tasks (5-10 minutes)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold text-primary min-w-[60px]">15-25 pts</span>
+                  <span className="text-muted-foreground">Standard chores (15-30 minutes)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold text-primary min-w-[60px]">30-50 pts</span>
+                  <span className="text-muted-foreground">Major tasks or projects (30+ minutes)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold text-primary min-w-[60px]">10-20 pts</span>
+                  <span className="text-muted-foreground">Learning activities per unit</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Tip: Set rewards at 100-500 points to encourage saving and goal-setting.</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 4-Column Layout */}
@@ -922,37 +1020,165 @@ export default function ParentDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Child Details Dialog */}
+      {/* Enhanced Child Details Dialog */}
       <Dialog open={isChildDetailsDialogOpen} onOpenChange={setIsChildDetailsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Child Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              {selectedChild?.name}'s Profile
+            </DialogTitle>
           </DialogHeader>
           {selectedChild && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl">😊</div>
-                <div>
-                  <div className="text-lg font-semibold">{selectedChild.name}</div>
-                  <div className="text-sm text-muted-foreground">Age {selectedChild.age}</div>
+            <div className="space-y-6">
+              {/* Basic Info & Stats */}
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-3xl">😊</div>
+                <div className="flex-1">
+                  <div className="text-xl font-bold">{selectedChild.name}</div>
+                  <div className="text-sm text-muted-foreground">Age {selectedChild.age} • Level {selectedChild.level || 1}</div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted/50 p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground">Level</div>
-                  <div className="text-xl font-bold text-primary">{selectedChild.level || 1}</div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-primary/5 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{selectedChild.totalPoints}</div>
+                  <div className="text-xs text-muted-foreground">Points</div>
                 </div>
-                <div className="bg-muted/50 p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground">Total Points</div>
-                  <div className="text-xl font-bold text-primary">{selectedChild.totalPoints}</div>
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{selectedChild.experiencePoints || 0}</div>
+                  <div className="text-xs text-muted-foreground">XP</div>
                 </div>
-                <div className="bg-muted/50 p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground">Experience</div>
-                  <div className="text-xl font-bold text-primary">{selectedChild.experiencePoints || 0} XP</div>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-lg">
+                <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-600">0</div>
                   <div className="text-xs text-muted-foreground">Badges</div>
-                  <div className="text-xl font-bold text-primary">0</div>
+                </div>
+              </div>
+
+              {/* Current Status Summary */}
+              <div>
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Current Status
+                </h3>
+                <div className="space-y-2">
+                  {(() => {
+                    const childChores = allChildrenChores.filter(c => c.childId === selectedChild.id);
+                    const inProgress = childChores.filter(c => !c.completedAt).length;
+                    const completed = childChores.filter(c => c.completedAt && !c.approvedAt).length;
+                    const approved = childChores.filter(c => c.approvedAt).length;
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between text-sm bg-blue-50 p-2 rounded">
+                          <span className="text-muted-foreground">Tasks in Progress</span>
+                          <span className="font-bold text-blue-600">{inProgress}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm bg-orange-50 p-2 rounded">
+                          <span className="text-muted-foreground">Awaiting Approval</span>
+                          <span className="font-bold text-orange-600">{completed}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm bg-green-50 p-2 rounded">
+                          <span className="text-muted-foreground">Approved Today</span>
+                          <span className="font-bold text-green-600">{approved}</span>
+                        </div>
+                        {childChores.length === 0 && (
+                          <div className="text-sm text-muted-foreground italic p-2 bg-muted/30 rounded">
+                            No tasks assigned yet
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Settings Section */}
+              <div>
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Settings & Preferences
+                </h3>
+                <div className="space-y-4">
+                  {/* Goals */}
+                  <div>
+                    <Label htmlFor="child-goals" className="text-sm font-medium">Personal Goals</Label>
+                    <Textarea
+                      id="child-goals"
+                      placeholder="What does this child want to achieve? (e.g., save for a bike, learn guitar)"
+                      defaultValue={selectedChild.goals || ""}
+                      className="mt-1"
+                      rows={2}
+                      data-testid="input-child-goals"
+                      onBlur={(e) => {
+                        if (e.target.value !== selectedChild.goals) {
+                          apiRequest('PATCH', `/api/children/${selectedChild.id}/settings`, {
+                            goals: e.target.value
+                          }).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['/api/children'] });
+                            toast({ title: "Goals Updated", description: "Child's goals have been saved." });
+                          });
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      AI will use these goals to personalize task suggestions
+                    </p>
+                  </div>
+
+                  {/* Interests */}
+                  <div>
+                    <Label htmlFor="child-interests" className="text-sm font-medium">Interests & Hobbies</Label>
+                    <Textarea
+                      id="child-interests"
+                      placeholder="What does this child enjoy? (e.g., sports, art, video games, cooking)"
+                      defaultValue={selectedChild.interests || ""}
+                      className="mt-1"
+                      rows={2}
+                      data-testid="input-child-interests"
+                      onBlur={(e) => {
+                        if (e.target.value !== selectedChild.interests) {
+                          apiRequest('PATCH', `/api/children/${selectedChild.id}/settings`, {
+                            interests: e.target.value
+                          }).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['/api/children'] });
+                            toast({ title: "Interests Updated", description: "Child's interests have been saved." });
+                          });
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      AI will create more engaging activities based on their interests
+                    </p>
+                  </div>
+
+                  {/* Reminder Settings */}
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">Task Reminders</div>
+                      <div className="text-xs text-muted-foreground">
+                        {selectedChild.reminderEnabled ? 'Enabled' : 'Disabled'}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        apiRequest('PATCH', `/api/children/${selectedChild.id}/settings`, {
+                          reminderEnabled: !selectedChild.reminderEnabled
+                        }).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/children'] });
+                          toast({
+                            title: selectedChild.reminderEnabled ? "Reminders Disabled" : "Reminders Enabled",
+                            description: `Task reminders have been ${selectedChild.reminderEnabled ? 'turned off' : 'turned on'}.`
+                          });
+                        });
+                      }}
+                      data-testid="button-toggle-reminders"
+                    >
+                      {selectedChild.reminderEnabled ? 'Disable' : 'Enable'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

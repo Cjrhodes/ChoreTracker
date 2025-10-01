@@ -123,6 +123,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all assigned chores for all children of a parent
+  app.get('/api/parent-children-chores', isAuthenticated, async (req: any, res) => {
+    try {
+      const parentId = req.user.claims.sub;
+      const chores = await storage.getAllParentChores(parentId);
+      res.json(chores);
+    } catch (error) {
+      console.error("Error fetching parent children chores:", error);
+      res.status(500).json({ message: "Failed to fetch chores" });
+    }
+  });
+
   // Chore template routes
   app.get('/api/chore-templates', isAuthenticated, async (req: any, res) => {
     try {

@@ -525,6 +525,35 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
   }
 
+  async getAllParentChores(parentId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: assignedChores.id,
+        childId: assignedChores.childId,
+        choreTemplateId: assignedChores.choreTemplateId,
+        assignedDate: assignedChores.assignedDate,
+        completedAt: assignedChores.completedAt,
+        approvedAt: assignedChores.approvedAt,
+        pointsAwarded: assignedChores.pointsAwarded,
+        requiresImage: assignedChores.requiresImage,
+        completionImageUrl: assignedChores.completionImageUrl,
+        choreTemplate: {
+          id: choreTemplates.id,
+          name: choreTemplates.name,
+          description: choreTemplates.description,
+          pointValue: choreTemplates.pointValue,
+          icon: choreTemplates.icon,
+          category: choreTemplates.category,
+          frequency: choreTemplates.frequency,
+        }
+      })
+      .from(assignedChores)
+      .innerJoin(children, eq(assignedChores.childId, children.id))
+      .innerJoin(choreTemplates, eq(assignedChores.choreTemplateId, choreTemplates.id))
+      .where(eq(children.parentId, parentId))
+      .orderBy(desc(assignedChores.assignedDate));
+  }
+
   // Learning Goals operations
   async getLearningGoalsByParent(parentId: string): Promise<LearningGoal[]> {
     return await db.select().from(learningGoals).where(eq(learningGoals.parentId, parentId));
