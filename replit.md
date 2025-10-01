@@ -22,12 +22,20 @@ PostgreSQL is the primary database, accessed via Drizzle ORM for type-safe inter
 
 ## Authentication and Authorization
 
-The system integrates Replit's OpenID Connect (OIDC) service with Passport.js for session management. It uses OIDC for authentication, Passport.js middleware, and PostgreSQL-backed session storage. Role-based access control ensures parents only access their children's data. Security measures include session-based authentication, CSRF protection, request validation, and parent-child relationship verification.
+The system integrates Replit's OpenID Connect (OIDC) service with Passport.js for session management. It uses OIDC for authentication, Passport.js middleware, and PostgreSQL-backed session storage. Role-based access control ensures parents only access their children's data. Security measures include session-based authentication, CSRF protection, request validation, and comprehensive parent-child relationship verification across all child data endpoints to prevent IDOR (Insecure Direct Object Reference) vulnerabilities.
+
+### Authorization Pattern
+All child-scoped API endpoints verify parent ownership by checking `req.user.claims.sub === child.parentId` before returning data or performing actions. This pattern is consistently applied across endpoints including:
+- Child profile access (GET /api/children/:id)
+- Child chores and available tasks
+- Child goals and badges
+- Task scheduling and self-assignment
 
 ## Core Features
 
 - **Dual Dashboards:** Separate, role-specific interfaces for parents and children.
-- **AI-Powered Chat:** A universal chat system providing guidance and suggestions for both parents and children, with message history persistence.
+- **AI-Powered Chat:** A universal chat system providing guidance and suggestions for both parents and children, with message history persistence and WebSocket-based real-time communication.
+- **Calendar Scheduling:** Children can schedule available tasks on specific dates with time selection through a tabbed interface (Tasks/Calendar views), with friendly empty state messaging when no tasks are available.
 - **Dynamic Parent Dashboard:** A 4-column vertical layout for managing family members, chores, learning, and exercise, with internal scrolling for content areas.
 - **AI-Generated Suggestions:** Automatic generation of task, learning, and exercise suggestions tailored to children's profiles.
 - **Drag-and-Drop Assignment:** Intuitive drag-and-drop functionality for assigning both AI-generated and user-created tasks, learning goals, and exercise activities to children.
