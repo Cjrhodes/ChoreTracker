@@ -185,11 +185,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/children/:childId/available-tasks', isAuthenticated, async (req: any, res) => {
     try {
       const { childId } = req.params;
+      const authenticatedUserId = req.user.claims.sub;
       
       // First, verify the child exists and get their parent
       const child = await storage.getChild(childId);
       if (!child) {
         return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Verify the authenticated user is the child's parent
+      if (child.parentId !== authenticatedUserId) {
+        return res.status(403).json({ message: "Not authorized to access this child's tasks" });
       }
       
       // Get all chore templates from the child's parent
@@ -205,6 +211,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/children/:childId/chores', isAuthenticated, async (req: any, res) => {
     try {
       const { childId } = req.params;
+      const authenticatedUserId = req.user.claims.sub;
+      
+      // Verify the child exists and belongs to the authenticated user
+      const child = await storage.getChild(childId);
+      if (!child) {
+        return res.status(404).json({ message: "Child not found" });
+      }
+      
+      // Verify the authenticated user is the child's parent
+      if (child.parentId !== authenticatedUserId) {
+        return res.status(403).json({ message: "Not authorized to access this child's chores" });
+      }
+      
       const chores = await storage.getAssignedChoresByChild(childId);
       res.json(chores);
     } catch (error) {

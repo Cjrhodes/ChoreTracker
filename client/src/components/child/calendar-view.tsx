@@ -151,47 +151,56 @@ export function CalendarView({ childId }: CalendarViewProps) {
             <DialogTitle>Schedule a Task</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="task">Select Task</Label>
-              <Select value={selectedTask || ""} onValueChange={setSelectedTask}>
-                <SelectTrigger id="task" data-testid="select-task">
-                  <SelectValue placeholder="Choose a task" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTasks.map(task => (
-                    <SelectItem key={task.id} value={task.id}>
-                      {task.icon} {task.name} ({task.pointValue} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                data-testid="input-time"
-              />
-            </div>
-            <Button
-              onClick={() => {
-                if (selectedTask && selectedDate) {
-                  scheduleTaskMutation.mutate({
-                    taskId: selectedTask,
-                    scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
-                    scheduledTime: selectedTime,
-                  });
-                }
-              }}
-              disabled={!selectedTask || scheduleTaskMutation.isPending}
-              className="w-full"
-              data-testid="button-confirm-schedule"
-            >
-              {scheduleTaskMutation.isPending ? "Scheduling..." : "Schedule Task"}
-            </Button>
+            {availableTasks.length === 0 ? (
+              <div className="text-center py-8" data-testid="no-tasks-message">
+                <p className="text-muted-foreground mb-2">No tasks available to schedule</p>
+                <p className="text-sm text-muted-foreground">Ask your parent to create some tasks for you!</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="task">Select Task</Label>
+                  <Select value={selectedTask || ""} onValueChange={setSelectedTask}>
+                    <SelectTrigger id="task" data-testid="select-task">
+                      <SelectValue placeholder="Choose a task" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTasks.map(task => (
+                        <SelectItem key={task.id} value={task.id}>
+                          {task.icon} {task.name} ({task.pointValue} pts)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="time">Time</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    data-testid="input-time"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    if (selectedTask && selectedDate) {
+                      scheduleTaskMutation.mutate({
+                        taskId: selectedTask,
+                        scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
+                        scheduledTime: selectedTime,
+                      });
+                    }
+                  }}
+                  disabled={!selectedTask || scheduleTaskMutation.isPending}
+                  className="w-full"
+                  data-testid="button-confirm-schedule"
+                >
+                  {scheduleTaskMutation.isPending ? "Scheduling..." : "Schedule Task"}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
