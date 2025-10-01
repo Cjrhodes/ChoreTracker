@@ -32,6 +32,7 @@ export default function ParentDashboard() {
   const [isLearningGoalDialogOpen, setIsLearningGoalDialogOpen] = useState(false);
   const [isContentViewDialogOpen, setIsContentViewDialogOpen] = useState(false);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
+  const [approvalFilterChildId, setApprovalFilterChildId] = useState<string | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [isChildDetailsDialogOpen, setIsChildDetailsDialogOpen] = useState(false);
@@ -570,18 +571,26 @@ export default function ParentDashboard() {
                 if (!hasNoAssignments && pendingApproval === 0) return null;
                 
                 return (
-                  <div key={child.id} className="text-sm bg-orange-50 p-2 rounded">
+                  <div key={child.id} className="text-sm bg-orange-50 p-2 rounded hover:bg-orange-100 transition-colors cursor-pointer" onClick={() => {
+                    if (pendingApproval > 0) {
+                      setApprovalFilterChildId(child.id);
+                      setIsApprovalDialogOpen(true);
+                    } else {
+                      setSelectedChild(child);
+                      setIsChildDetailsDialogOpen(true);
+                    }
+                  }} data-testid={`attention-item-${child.id}`}>
                     <span className="font-medium">{child.name}</span>
                     {hasNoAssignments && (
                       <div className="text-orange-600 flex items-center gap-1 mt-1">
                         <CheckCircle className="w-3 h-3" />
-                        Has zero task assignments
+                        Has zero task assignments - Click to view profile
                       </div>
                     )}
                     {pendingApproval > 0 && (
                       <div className="text-orange-600 flex items-center gap-1 mt-1">
                         <Star className="w-3 h-3" />
-                        {pendingApproval} completed {pendingApproval === 1 ? 'task' : 'tasks'} waiting for approval
+                        {pendingApproval} completed {pendingApproval === 1 ? 'task' : 'tasks'} waiting for approval - Click to review
                       </div>
                     )}
                   </div>
@@ -1087,6 +1096,26 @@ export default function ParentDashboard() {
                             No tasks assigned yet
                           </div>
                         )}
+                        {(() => {
+                          const completedPending = childChores.filter(c => c.completedAt && !c.approvedAt).length;
+                          if (completedPending > 0) {
+                            return (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="w-full mt-2"
+                                onClick={() => {
+                                  setApprovalFilterChildId(selectedChild.id);
+                                  setIsApprovalDialogOpen(true);
+                                }}
+                                data-testid="button-review-child-approvals"
+                              >
+                                <Star className="w-4 h-4 mr-2" />
+                                Review {completedPending} Pending {completedPending === 1 ? 'Approval' : 'Approvals'}
+                              </Button>
+                            );
+                          }
+                        })()}
                       </>
                     );
                   })()}
@@ -1264,13 +1293,24 @@ export default function ParentDashboard() {
       </Dialog>
 
       {/* Approval Dialog */}
-      <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+      <Dialog open={isApprovalDialogOpen} onOpenChange={(open) => {
+        setIsApprovalDialogOpen(open);
+        if (!open) setApprovalFilterChildId(null);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Review Completed Chores</DialogTitle>
+            <DialogTitle>
+              {approvalFilterChildId 
+                ? `Review ${children.find(c => c.id === approvalFilterChildId)?.name}'s Completed Tasks`
+                : 'Review Completed Chores'
+              }
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {recentChores.filter(chore => chore.completedAt && !chore.approvedAt).map((chore) => (
+            {recentChores
+              .filter(chore => chore.completedAt && !chore.approvedAt)
+              .filter(chore => !approvalFilterChildId || chore.childId === approvalFilterChildId)
+              .map((chore) => (
               <div key={chore.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
