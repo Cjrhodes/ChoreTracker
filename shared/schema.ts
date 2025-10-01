@@ -188,6 +188,20 @@ export const aiSuggestions = pgTable("ai_suggestions", {
   acceptedAt: timestamp("accepted_at"),
 });
 
+// Scheduled tasks for calendar view
+export const scheduledTasks = pgTable("scheduled_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id),
+  taskType: varchar("task_type").notNull(), // 'chore', 'learning', 'exercise'
+  taskId: varchar("task_id").notNull(), // Reference to choreTemplate, learningGoal, or aiSuggestion id
+  scheduledDate: date("scheduled_date").notNull(),
+  scheduledTime: varchar("scheduled_time"), // Optional time in HH:MM format
+  title: varchar("title").notNull(),
+  description: text("description"),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   children: many(children),
@@ -209,6 +223,7 @@ export const childrenRelations = relations(children, ({ one, many }) => ({
   dailyProgress: many(dailyProgress),
   aiMessages: many(aiMessages),
   aiSuggestions: many(aiSuggestions),
+  scheduledTasks: many(scheduledTasks),
 }));
 
 export const choreTemplatesRelations = relations(choreTemplates, ({ one, many }) => ({
@@ -312,6 +327,13 @@ export const aiSuggestionsRelations = relations(aiSuggestions, ({ one }) => ({
   }),
 }));
 
+export const scheduledTasksRelations = relations(scheduledTasks, ({ one }) => ({
+  child: one(children, {
+    fields: [scheduledTasks.childId],
+    references: [children.id],
+  }),
+}));
+
 // Insert schemas
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
@@ -401,6 +423,13 @@ export const insertAppMessageSchema = createInsertSchema(appMessages).omit({
   type: z.enum(['reminder', 'encouragement', 'goal_coaching', 'general_chat', 'family_status']),
 });
 
+export const insertScheduledTaskSchema = createInsertSchema(scheduledTasks).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  taskType: z.enum(['chore', 'learning', 'exercise']),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -430,3 +459,5 @@ export type AiSuggestion = typeof aiSuggestions.$inferSelect;
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 export type AppMessage = typeof appMessages.$inferSelect;
 export type InsertAppMessage = z.infer<typeof insertAppMessageSchema>;
+export type ScheduledTask = typeof scheduledTasks.$inferSelect;
+export type InsertScheduledTask = z.infer<typeof insertScheduledTaskSchema>;
