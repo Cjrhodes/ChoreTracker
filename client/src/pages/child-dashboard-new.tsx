@@ -40,9 +40,20 @@ export default function ChildDashboard() {
     enabled: !!child,
   });
 
+  const { data: scheduledTasks = [] } = useQuery<any[]>({
+    queryKey: ["/api/scheduled-tasks", child?.id],
+    enabled: !!child,
+  });
+
   // Filter chores by status
   const inProgressChores = chores.filter(c => !c.completedAt && !c.approvedAt);
   const completedChores = chores.filter(c => c.completedAt);
+
+  // Get today's date
+  const today = new Date().toISOString().split('T')[0];
+  const todayScheduledTasks = scheduledTasks.filter(task => task.scheduledDate === today && !task.completed);
+  const todayInProgressTasks = inProgressChores.filter(chore => chore.assignedDate === today);
+  const totalTodayTasks = todayScheduledTasks.length + todayInProgressTasks.length;
 
   // Self-assign task mutation
   const selfAssignMutation = useMutation({
@@ -170,6 +181,36 @@ export default function ChildDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Welcome Message from Agent */}
+        <Card className="mb-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-blue-200 dark:border-blue-800" data-testid="welcome-message">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-lg">🤖</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-1" data-testid="agent-greeting">
+                  Hey {child.name}! 👋
+                </h3>
+                {totalTodayTasks > 0 ? (
+                  <p className="text-sm text-muted-foreground" data-testid="task-summary">
+                    You have <span className="font-bold text-blue-600 dark:text-blue-400">{totalTodayTasks} task{totalTodayTasks !== 1 ? 's' : ''}</span> scheduled for today! 
+                    {todayScheduledTasks.length > 0 && ` ${todayScheduledTasks.length} on your calendar`}
+                    {todayInProgressTasks.length > 0 && todayScheduledTasks.length > 0 && ' and '}
+                    {todayInProgressTasks.length > 0 && ` ${todayInProgressTasks.length} in progress`}.
+                    Let's crush them and earn those points! 💪
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground" data-testid="task-suggestion">
+                    No tasks scheduled for today yet. How about grabbing some tasks from the available list? 
+                    You can drag them to "In Progress" or schedule them on your calendar! 📅✨
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* AI Chat Widget */}
         <div className="mb-4">
