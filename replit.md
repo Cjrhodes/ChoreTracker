@@ -40,6 +40,7 @@ All child-scoped API endpoints verify parent ownership by checking `req.user.cla
 - **AI-Generated Suggestions:** Automatic generation of task, learning, and exercise suggestions tailored to children's profiles.
 - **Drag-and-Drop Assignment:** Intuitive drag-and-drop functionality for assigning both AI-generated and user-created tasks, learning goals, and exercise activities to children.
 - **Child-Specific Settings & AI Personalization:** Settings for each child (goals, interests, reminders) to personalize AI suggestions and task generation.
+- **Child Management:** Parents can delete children from both the Settings page and the Family Members panel, with confirmation dialogs to prevent accidental deletions. All related child data (tasks, goals, badges, AI suggestions, etc.) is safely removed through cascading deletions.
 
 # External Dependencies
 
