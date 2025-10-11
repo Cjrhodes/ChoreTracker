@@ -10,7 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertChildSchema, type Child, type InsertChild, type ChoreTemplate, type AssignedChore } from "@shared/schema";
+import { insertChildSchema, type Child, type InsertChild, type ChoreTemplate, type AssignedChore, type User } from "@shared/schema";
 import { Trash2 } from "lucide-react";
 
 type ChoreWithTemplate = AssignedChore & { choreTemplate: ChoreTemplate };
