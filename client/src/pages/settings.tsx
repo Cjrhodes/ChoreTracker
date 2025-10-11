@@ -7,14 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Save, Settings as SettingsIcon, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
+import { Loader2, Save, Settings as SettingsIcon, ArrowLeft, Trash2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import type { Child } from "@shared/schema";
 
 export default function Settings() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedChildId, setSelectedChildId] = useState<string>("");
 
   const { data: children = [], isLoading: loadingChildren } = useQuery<Child[]>({
@@ -57,6 +59,32 @@ export default function Settings() {
       toast({
         title: "Save Failed",
         description: "Couldn't save settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteChildMutation = useMutation({
+    mutationFn: async (childId: string) => {
+      await apiRequest("DELETE", `/api/children/${childId}`);
+      return childId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      setSelectedChildId("");
+      toast({
+        title: "Child Removed! 👋",
+        description: "The child has been removed successfully.",
+      });
+      // Navigate to dashboard if no children left
+      if (children.length === 1) {
+        setLocation("/");
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove child. Please try again.",
         variant: "destructive",
       });
     },
@@ -244,7 +272,39 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-between gap-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="lg"
+                    data-testid="button-delete-child-settings"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Child
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Child?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove "{selectedChild?.name}" and all their data including chores, points, and achievements. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => selectedChild && deleteChildMutation.mutate(selectedChild.id)}
+                      disabled={deleteChildMutation.isPending}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      data-testid="button-confirm-delete-child"
+                    >
+                      {deleteChildMutation.isPending ? "Removing..." : "Remove Child"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <Button
                 onClick={handleSave}
                 disabled={updateSettingsMutation.isPending || loadingChild}

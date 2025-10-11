@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertChildSchema, insertChoreTemplateSchema, insertRewardSchema, insertLearningGoalSchema, type Child, type InsertChild, type ChoreTemplate, type InsertChoreTemplate, type Reward, type InsertReward, type AssignedChore, type LearningGoal, type InsertLearningGoal } from "@shared/schema";
-import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell, GripVertical, Settings } from "lucide-react";
+import { Users, CheckCircle, Star, Gift, Calendar, Plus, Activity, TrendingUp, GraduationCap, Brain, BookOpen, Eye, Sparkles, Dumbbell, GripVertical, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { UniversalChatWidget } from "@/components/ui/universal-chat-widget";
@@ -247,6 +248,30 @@ export default function ParentDashboard() {
       toast({
         title: "Assignment Failed",
         description: "Couldn't assign the task. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteChildMutation = useMutation({
+    mutationFn: async (childId: string) => {
+      await apiRequest("DELETE", `/api/children/${childId}`);
+      return childId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parent-children-chores"] });
+      setIsChildDetailsDialogOpen(false);
+      setSelectedChild(null);
+      toast({
+        title: "Child Removed! 👋",
+        description: "The child has been removed successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove child. Please try again.",
         variant: "destructive",
       });
     },
@@ -1033,10 +1058,43 @@ export default function ParentDashboard() {
       <Dialog open={isChildDetailsDialogOpen} onOpenChange={setIsChildDetailsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              {selectedChild?.name}'s Profile
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                {selectedChild?.name}'s Profile
+              </DialogTitle>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    data-testid={`button-delete-child-panel-${selectedChild?.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Child?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove "{selectedChild?.name}" and all their data including chores, points, and achievements. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-delete-panel">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => selectedChild && deleteChildMutation.mutate(selectedChild.id)}
+                      disabled={deleteChildMutation.isPending}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      data-testid="button-confirm-delete-child-panel"
+                    >
+                      {deleteChildMutation.isPending ? "Removing..." : "Remove Child"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </DialogHeader>
           {selectedChild && (
             <div className="space-y-6">

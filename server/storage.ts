@@ -262,11 +262,36 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChild(childId: string): Promise<void> {
     // Delete related records first (to maintain referential integrity)
+    // 1. Delete learning-related records
+    const childLearningGoals = await db.select().from(learningGoals).where(eq(learningGoals.childId, childId));
+    for (const goal of childLearningGoals) {
+      // Delete activities and their quiz attempts for each learning goal
+      const activities = await this.getActivitiesByGoal(goal.id);
+      for (const activity of activities) {
+        await db.delete(quizAttempts).where(eq(quizAttempts.activityId, activity.id));
+      }
+      await db.delete(learningActivities).where(eq(learningActivities.goalId, goal.id));
+      await db.delete(learningGoals).where(eq(learningGoals.id, goal.id));
+    }
+
+    // 2. Delete quiz attempts directly associated with child
+    await db.delete(quizAttempts).where(eq(quizAttempts.childId, childId));
+    
+    // 3. Delete AI-related records
+    await db.delete(aiSuggestions).where(eq(aiSuggestions.childId, childId));
+    await db.delete(aiMessages).where(eq(aiMessages.childId, childId));
+    await db.delete(appMessages).where(and(eq(appMessages.partyType, 'child'), eq(appMessages.partyId, childId)));
+    
+    // 4. Delete progress and scheduling records
+    await db.delete(dailyProgress).where(eq(dailyProgress.childId, childId));
+    await db.delete(scheduledTasks).where(eq(scheduledTasks.childId, childId));
+    
+    // 5. Delete badges, goals, and chores
     await db.delete(earnedBadges).where(eq(earnedBadges.childId, childId));
     await db.delete(goalSelections).where(eq(goalSelections.childId, childId));
     await db.delete(assignedChores).where(eq(assignedChores.childId, childId));
     
-    // Then delete the child
+    // Finally delete the child
     await db.delete(children).where(eq(children.id, childId));
   }
 
