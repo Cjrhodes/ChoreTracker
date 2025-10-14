@@ -5,10 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Chore Buster',
   webDir: 'dist/public',
   server: {
-    androidScheme: 'https',
-    // For live reload: uncomment and set to your computer's IP
-    url: 'http://10.255.255.254:5000',
-    cleartext: true
+    androidScheme: 'https'
+    // For live reload during development, uncomment and set to your computer's IP:
+    // url: 'http://10.255.255.254:5000',
+    // cleartext: true
   },
   plugins: {
     StatusBar: {
