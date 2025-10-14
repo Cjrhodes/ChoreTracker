@@ -48,9 +48,15 @@ function Router() {
             <p className="text-muted-foreground mt-2">Sign in to continue</p>
           </div>
           <SignIn
-            routing="hash"
+            routing="virtual"
             signUpUrl="/sign-up"
             afterSignInUrl="/"
+            appearance={{
+              elements: {
+                rootBox: "mx-auto",
+                card: "shadow-none"
+              }
+            }}
           />
         </div>
       </div>
