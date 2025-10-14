@@ -10,6 +10,9 @@ const config: CapacitorConfig = {
     // url: 'http://10.255.255.254:5000',
     // cleartext: true
   },
+  ios: {
+    limitsNavigationsToAppBoundDomains: true
+  },
   plugins: {
     StatusBar: {
       style: 'dark',
