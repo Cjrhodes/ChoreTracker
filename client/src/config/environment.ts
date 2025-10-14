@@ -8,7 +8,7 @@ const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
 const REPLIT_DEV_URL = window.location.origin;
 
 // Your deployed backend URL (update this after deploying your backend)
-const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://your-backend-url.replit.app';
+const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://choretracker-production.up.railway.app';
 
 /**
  * Returns the base API URL based on the current environment
