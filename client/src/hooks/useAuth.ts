@@ -1,3 +1,4 @@
+import { useUser } from '@clerk/clerk-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface User {
@@ -8,20 +9,31 @@ interface User {
   profileImageUrl: string | null;
 }
 
-// Real auth hook that checks with the backend
+// Auth hook that uses Clerk for authentication
 export function useAuth() {
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { isSignedIn, user: clerkUser, isLoaded } = useUser();
+
+  // Fetch additional user data from our backend
+  const { data: user, isLoading: isUserLoading } = useQuery<User>({
     queryKey: ['/api/user'],
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: isSignedIn, // Only fetch if user is signed in
   });
 
-  // If we get a 401 error, user is not authenticated (this is expected)
-  const isAuthenticated = !!user && !error;
+  const isLoading = !isLoaded || (isSignedIn && isUserLoading);
+  const isAuthenticated = isSignedIn && isLoaded;
 
   return {
-    user,
+    user: user || (clerkUser ? {
+      id: clerkUser.id,
+      email: clerkUser.primaryEmailAddress?.emailAddress || '',
+      firstName: clerkUser.firstName || '',
+      lastName: clerkUser.lastName || '',
+      profileImageUrl: clerkUser.imageUrl || null,
+    } : null),
     isLoading,
     isAuthenticated,
+    clerkUser,
   };
 }

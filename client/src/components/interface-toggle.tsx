@@ -14,7 +14,15 @@ export default function InterfaceToggle({ activeInterface, onToggle }: Interface
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logoUrl} alt="Chore Buster Logo" className="h-12 w-12 md:h-14 md:w-14" />
-            <h1 className="text-xl font-bold md:text-2xl lg:text-3xl" style={{ color: 'white', fontFamily: "'Arial Black', 'Arial Bold', Gadget, sans-serif" }} data-testid="text-app-title">
+            <h1
+              className="text-xl font-bold md:text-2xl lg:text-3xl"
+              style={{
+                fontFamily: "'Fredoka One', 'Righteous', cursive",
+                color: '#0d5c3a',
+                WebkitTextFillColor: '#0d5c3a'
+              }}
+              data-testid="text-app-title"
+            >
               Chore Buster
             </h1>
           </div>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Righteous&family=Fredoka+One&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -218,4 +218,14 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* App title styling */
+.app-title {
+  font-family: 'Fredoka One', 'Righteous', cursive !important;
+  color: hsl(161, 88%, 14%) !important;
+}
+
+.dark .app-title {
+  color: hsl(150, 30%, 90%) !important;
 }

@@ -162,7 +162,28 @@ export default function ChildDashboard() {
   };
 
   if (!child) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="max-w-md mx-4">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">No Child Profile Found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground text-center">
+              To use Kid Mode, a parent needs to create a child profile first.
+            </p>
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
+              <p className="font-semibold text-sm">How to get started:</p>
+              <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                <li>Switch to Parent Mode using the toggle in the header</li>
+                <li>Create a child profile from the parent dashboard</li>
+                <li>Come back to Kid Mode to start earning points!</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

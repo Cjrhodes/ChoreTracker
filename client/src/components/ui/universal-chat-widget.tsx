@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
 import { apiRequest } from '@/lib/queryClient'
+import { WS_URL } from '@/config/environment'
 
 interface AppChatMessage {
   id: string
@@ -68,9 +69,9 @@ export function UniversalChatWidget({ partyType, partyId, userName }: UniversalC
   const connectWebSocket = () => {
     if (ws.current?.readyState === WebSocket.OPEN) return
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/ws`
-    
+    // Use configured WebSocket URL from environment
+    const wsUrl = WS_URL
+
     try {
       ws.current = new WebSocket(wsUrl)
       

@@ -1,9 +1,37 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { setupAuth } from "./replitAuth";
+import { setupAuth } from "./clerkAuth";
 
 const app = express();
+
+// CORS configuration for mobile app support
+const allowedOrigins = [
+  'https://taskie.org',           // Production web
+  'http://localhost:5000',        // Development web
+  'capacitor://localhost',        // iOS app
+  'http://localhost',             // Android local
+  'ionic://localhost',            // Ionic framework
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,  // Allow cookies for authentication
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

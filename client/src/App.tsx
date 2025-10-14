@@ -1,5 +1,7 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { useEffect } from "react";
+import { SignIn, useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { queryClient, setClerkTokenGetter } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +14,19 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { getToken } = useClerkAuth();
+
+  // Set up token getter for API requests
+  useEffect(() => {
+    setClerkTokenGetter(async () => {
+      try {
+        return await getToken();
+      } catch (error) {
+        console.error("Failed to get Clerk token:", error);
+        return null;
+      }
+    });
+  }, [getToken]);
 
   if (isLoading) {
     return (
@@ -25,13 +40,18 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    // Redirect directly to login instead of showing welcome screen
-    window.location.href = "/api/login";
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Redirecting to login...</p>
+        <div className="w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold">Chore Buster</h1>
+            <p className="text-muted-foreground mt-2">Sign in to continue</p>
+          </div>
+          <SignIn
+            routing="hash"
+            signUpUrl="/sign-up"
+            afterSignInUrl="/"
+          />
         </div>
       </div>
     );
