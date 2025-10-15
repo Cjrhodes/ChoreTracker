@@ -19,13 +19,9 @@ export function getApiUrl(): string {
     return PRODUCTION_API_URL;
   }
 
-  // Web development uses local server
-  if (isDevelopment) {
-    return REPLIT_DEV_URL;
-  }
-
-  // Production web uses production API
-  return PRODUCTION_API_URL;
+  // Web (both dev and prod) uses same origin to avoid CORS
+  // This works because the backend and frontend are served from the same domain
+  return window.location.origin;
 }
 
 /**
