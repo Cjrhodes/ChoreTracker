@@ -9,11 +9,12 @@ const app = express();
 
 // CORS configuration for mobile app support
 const allowedOrigins = [
-  'https://taskie.org',           // Production web
-  'http://localhost:5000',        // Development web
-  'capacitor://localhost',        // iOS app
-  'http://localhost',             // Android local
-  'ionic://localhost',            // Ionic framework
+  'https://taskie.org',                              // Production web
+  'https://choretracker-production.up.railway.app',  // Railway deployment
+  'http://localhost:5000',                           // Development web
+  'capacitor://localhost',                           // iOS app
+  'http://localhost',                                // Android local
+  'ionic://localhost',                               // Ionic framework
 ];
 
 app.use(cors({
