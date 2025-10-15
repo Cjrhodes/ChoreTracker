@@ -4,7 +4,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
 // Get __dirname equivalent for ES modules
@@ -30,6 +29,9 @@ export async function setupVite(app: Express, server: Server) {
     hmr: { server },
     allowedHosts: true as const,
   };
+
+  // Dynamically import vite.config only in development to avoid bundling issues
+  const { default: viteConfig } = await import("../vite.config.js");
 
   const vite = await createViteServer({
     ...viteConfig,
