@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx cap init:*)",
+      "Bash(npx cap add:*)",
+      "Bash(npm run check:*)",
+      "Bash(chmod:*)",
+      "Bash(./verify-mobile-setup.sh:*)",
+      "Bash(bash:*)",
+      "Bash(npx cross-env NODE_ENV=development tsx:*)",
+      "Bash(ip addr:*)",
+      "Bash(test:*)",
+      "Bash(cat:*)",
+      "Bash(npm run dev:win:*)",
+      "Bash(npm run dev)",
+      "Bash(curl:*)",
+      "Bash(npm run db:push:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "WebFetch(domain:dev.to)",
+      "Bash(npx cap open ios)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
